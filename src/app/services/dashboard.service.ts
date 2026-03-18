@@ -7,7 +7,9 @@ import {
   Referral, 
   DoneBusiness, 
   Recommendation, 
-  MeetingRequest 
+  MeetingRequest,
+  MeetingRequestPayload,
+  MeetingRequestCreateResponse
 } from '../models/dashboard.model';
 import { UserLookup } from '../models/user.model';
 
@@ -67,13 +69,13 @@ export class DashboardService {
   }
 
   // Submit meeting request
-  submitMeetingRequest(request: Omit<MeetingRequest, 'id' | 'createdAt' | 'status'>): Observable<MeetingRequest> {
-    return this.http.post<MeetingRequest>(`${this.apiUrl}/meeting-requests`, request);
+  submitMeetingRequest(request: MeetingRequestPayload): Observable<MeetingRequestCreateResponse> {
+    return this.http.post<MeetingRequestCreateResponse>(`${this.apiUrl}/meeting-requests`, request);
   }
 
   // Get meeting requests
-  getMeetingRequests(): Observable<MeetingRequest[]> {
-    return this.http.get<MeetingRequest[]>(`${this.apiUrl}/meeting-requests`);
+  getMeetingRequests(userId: number): Observable<MeetingRequest[]> {
+    return this.http.get<MeetingRequest[]>(`${this.apiUrl}/meeting-requests?userId=${userId}`);
   }
 
   // Get registered users for member search dropdowns

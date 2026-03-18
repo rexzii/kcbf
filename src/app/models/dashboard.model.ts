@@ -27,13 +27,31 @@ export interface Recommendation {
 }
 
 export interface MeetingRequest {
-  id: string;
+  id: number;
+  requesterId: number;
+  recipientId: number;
+  recipientName: string;
   requesterName: string;
   requesterEmail: string;
-  preferredDate: Date;
+  preferredDate: string;
   remarks: string;
-  createdAt: Date;
+  createdAt: string;
   status: 'pending' | 'scheduled' | 'cancelled';
+}
+
+export interface MeetingRequestPayload {
+  requesterId: number;
+  requesterName: string;
+  requesterEmail: string;
+  recipientIds: number[];
+  preferredDate: string;
+  remarks: string;
+}
+
+export interface MeetingRequestCreateResponse {
+  success: boolean;
+  message: string;
+  created: number;
 }
 
 export interface DashboardData {

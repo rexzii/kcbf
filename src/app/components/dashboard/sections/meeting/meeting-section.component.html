@@ -4,12 +4,22 @@
     <div class="form-section">
       <div class="form-group">
         <label for="memberSearchMeet">Member Search <span class="required">*</span></label>
-        <select id="memberSearchMeet" formControlName="memberSearch" class="form-control">
-          <option value="">Select member</option>
-          <option *ngFor="let member of memberOptions" [value]="member.name">{{ member.name }}</option>
-        </select>
-        <div class="error-message" *ngIf="meetingForm.get('memberSearch')?.touched && meetingForm.get('memberSearch')?.hasError('required')">
-          Please select a member
+        <div class="member-search-row">
+          <select id="memberSearchMeet" formControlName="memberSearch" class="form-control">
+            <option value="">Select member</option>
+            <option *ngFor="let member of memberOptions" [value]="member.id">{{ member.name }}</option>
+          </select>
+          <button type="button" class="btn-add-member" (click)="onAddMember()" aria-label="Add member to meeting request">+</button>
+        </div>
+
+        <div class="selected-members" *ngIf="selectedMembers.length > 0">
+          <span class="member-pill" *ngFor="let member of selectedMembers">
+            {{ member.name }}
+            <button type="button" class="remove-pill" (click)="onRemoveMember(member.id)" [attr.aria-label]="'Remove ' + member.name">x</button>
+          </span>
+        </div>
+        <div class="error-message" *ngIf="selectedMembers.length === 0 && meetingForm.touched">
+          Please add at least one member
         </div>
       </div>
 

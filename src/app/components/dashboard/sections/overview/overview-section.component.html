@@ -25,9 +25,8 @@
         </div>
         <div *ngFor="let req of meetingRequests" class="request-item">
           <p>From: <strong>{{ req.requesterName }}</strong></p>
+          <p class="text-muted">Proposed Time: {{ req.preferredDate | date:'medium' }}</p>
           <p class="text-muted">{{ req.remarks }}</p>
-          <p class="timestamp">{{ req.createdAt | date:'short' }}</p>
-          <span [class]="'status ' + getStatusClass(req.status)">{{ req.status }}</span>
         </div>
       </div>
     </section>

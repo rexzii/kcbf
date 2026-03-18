@@ -96,7 +96,10 @@
         *ngIf="activeTab() === 'meeting'"
         [meetingForm]="meetingForm"
         [memberOptions]="registeredMembers"
+        [selectedMembers]="selectedMeetingMembers"
         [loading]="loading()"
+        (addMember)="onMeetingAddMember($event)"
+        (removeMember)="onMeetingRemoveMember($event)"
         (submitForm)="onMeetingSubmit()"
         (cancel)="setActiveTab('overview')">
       </app-meeting-section>
