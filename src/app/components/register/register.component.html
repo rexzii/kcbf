@@ -1,0 +1,258 @@
+<div class="register-container">
+  <div class="register-card">
+    <h1>KCBF Member Access</h1>
+    <p class="subtitle">Login to continue or create a new account.</p>
+
+    <div class="tabs">
+      <button class="tab-button" routerLink="/login">Login</button>
+      <button class="tab-button active" disabled>Register</button>
+    </div>
+
+    <div *ngIf="error" class="alert alert-error">
+      {{ error }}
+    </div>
+
+    <div *ngIf="successMessage" class="alert alert-success">
+      {{ successMessage }}
+    </div>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+      <!-- Name Field -->
+      <div class="form-group">
+        <label for="name">Name*</label>
+        <input
+          type="text"
+          id="name"
+          formControlName="name"
+          class="form-input"
+          placeholder="Your full name"
+          [class.is-invalid]="submitted && f['name'].errors"
+        />
+        <div *ngIf="submitted && f['name'].errors" class="error-message">
+          <span *ngIf="f['name'].errors['required']">Name is required</span>
+          <span *ngIf="f['name'].errors['minlength']">Name must be at least 3 characters</span>
+        </div>
+      </div>
+
+      <!-- State Dropdown -->
+      <div class="form-group">
+        <label for="state">State*</label>
+        <select
+          id="state"
+          formControlName="state"
+          class="form-input"
+          [class.is-invalid]="submitted && f['state'].errors"
+        >
+          <option value="">Select your state</option>
+          <option *ngFor="let state of states" [value]="state">{{ state }}</option>
+        </select>
+        <div *ngIf="submitted && f['state'].errors" class="error-message">
+          <span *ngIf="f['state'].errors['required']">State is required</span>
+        </div>
+      </div>
+
+      <!-- Email Field -->
+      <div class="form-group">
+        <label for="email">Email*</label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          class="form-input"
+          placeholder="Your email"
+          [class.is-invalid]="submitted && f['email'].errors"
+        />
+        <div *ngIf="submitted && f['email'].errors" class="error-message">
+          <span *ngIf="f['email'].errors['required']">Email is required</span>
+          <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
+        </div>
+      </div>
+
+      <!-- WhatsApp Number -->
+      <div class="form-group">
+        <label for="whatsappNumber">WhatsApp Number*</label>
+        <input
+          type="tel"
+          id="whatsappNumber"
+          formControlName="whatsappNumber"
+          class="form-input"
+          placeholder="10 digit mobile number"
+          [class.is-invalid]="submitted && f['whatsappNumber'].errors"
+        />
+        <div *ngIf="submitted && f['whatsappNumber'].errors" class="error-message">
+          <span *ngIf="f['whatsappNumber'].errors['required']">WhatsApp number is required</span>
+          <span *ngIf="f['whatsappNumber'].errors['pattern']">Please enter a valid 10-digit number</span>
+        </div>
+      </div>
+
+      <!-- Date of Birth -->
+      <div class="form-group">
+        <label for="dateOfBirth">Date of Birth*</label>
+        <input
+          type="date"
+          id="dateOfBirth"
+          formControlName="dateOfBirth"
+          class="form-input"
+          [class.is-invalid]="submitted && f['dateOfBirth'].errors"
+        />
+        <div *ngIf="submitted && f['dateOfBirth'].errors" class="error-message">
+          <span *ngIf="f['dateOfBirth'].errors['required']">Date of birth is required</span>
+        </div>
+      </div>
+
+      <!-- Company Name -->
+      <div class="form-group">
+        <label for="companyName">Company Name*</label>
+        <input
+          type="text"
+          id="companyName"
+          formControlName="companyName"
+          class="form-input"
+          placeholder="Your company name"
+          [class.is-invalid]="submitted && f['companyName'].errors"
+        />
+        <div *ngIf="submitted && f['companyName'].errors" class="error-message">
+          <span *ngIf="f['companyName'].errors['required']">Company name is required</span>
+          <span *ngIf="f['companyName'].errors['minlength']">Company name must be at least 2 characters</span>
+        </div>
+      </div>
+
+      <!-- Industry -->
+      <div class="form-group">
+        <label for="industry">Industry*</label>
+        <select
+          id="industry"
+          formControlName="industry"
+          class="form-input"
+          [class.is-invalid]="submitted && f['industry'].errors"
+        >
+          <option value="">Select your industry</option>
+          <option *ngFor="let ind of industries" [value]="ind">{{ ind }}</option>
+        </select>
+        <div *ngIf="submitted && f['industry'].errors" class="error-message">
+          <span *ngIf="f['industry'].errors['required']">Industry is required</span>
+        </div>
+      </div>
+
+      <!-- Brief Profile -->
+      <div class="form-group">
+        <label for="briefProfile">Brief Profile / Description of Business*</label>
+        <textarea
+          id="briefProfile"
+          formControlName="briefProfile"
+          class="form-input form-textarea"
+          placeholder="Tell us about your business"
+          rows="3"
+          [class.is-invalid]="submitted && f['briefProfile'].errors"
+        ></textarea>
+        <div *ngIf="submitted && f['briefProfile'].errors" class="error-message">
+          <span *ngIf="f['briefProfile'].errors['required']">Business description is required</span>
+          <span *ngIf="f['briefProfile'].errors['minlength']">Description must be at least 10 characters</span>
+        </div>
+      </div>
+
+      <!-- Working Since -->
+      <div class="form-group">
+        <label for="workingSince">Working Since (Year)*</label>
+        <input
+          type="number"
+          id="workingSince"
+          formControlName="workingSince"
+          class="form-input"
+          placeholder="e.g., 2015"
+          min="1900"
+          max="2099"
+          [class.is-invalid]="submitted && f['workingSince'].errors"
+        />
+        <div *ngIf="submitted && f['workingSince'].errors" class="error-message">
+          <span *ngIf="f['workingSince'].errors['required']">Working since year is required</span>
+          <span *ngIf="f['workingSince'].errors['pattern']">Please enter a valid year</span>
+        </div>
+      </div>
+
+      <!-- Areas of Interest -->
+      <div class="form-group">
+        <label for="areasOfInterest">Areas of Interest*</label>
+        <input
+          type="text"
+          id="areasOfInterest"
+          formControlName="areasOfInterest"
+          class="form-input"
+          placeholder="e.g., Sales, Technology, Travel"
+          [class.is-invalid]="submitted && f['areasOfInterest'].errors"
+        />
+        <div *ngIf="submitted && f['areasOfInterest'].errors" class="error-message">
+          <span *ngIf="f['areasOfInterest'].errors['required']">Areas of interest is required</span>
+        </div>
+      </div>
+
+      <!-- LinkedIn Profile (Optional) -->
+      <div class="form-group">
+        <label for="linkedinProfile">LinkedIn Profile (if any)</label>
+        <input
+          type="url"
+          id="linkedinProfile"
+          formControlName="linkedinProfile"
+          class="form-input"
+          placeholder="https://"
+        />
+      </div>
+
+      <!-- Website (Optional) -->
+      <div class="form-group">
+        <label for="website">Website / Online Store (if any)</label>
+        <input
+          type="url"
+          id="website"
+          formControlName="website"
+          class="form-input"
+          placeholder="https://"
+        />
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label for="password">Password*</label>
+        <input
+          type="password"
+          id="password"
+          formControlName="password"
+          class="form-input"
+          placeholder="Create password"
+          [class.is-invalid]="submitted && f['password'].errors"
+        />
+        <div *ngIf="submitted && f['password'].errors" class="error-message">
+          <span *ngIf="f['password'].errors['required']">Password is required</span>
+          <span *ngIf="f['password'].errors['minlength']">Password must be at least 8 characters</span>
+        </div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password*</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          formControlName="confirmPassword"
+          class="form-input"
+          placeholder="Confirm password"
+          [class.is-invalid]="submitted && (f['confirmPassword'].errors || registerForm.errors?.['passwordMismatch'])"
+        />
+        <div *ngIf="submitted && registerForm.errors?.['passwordMismatch']" class="error-message">
+          <span>Passwords do not match</span>
+        </div>
+        <div *ngIf="submitted && f['confirmPassword'].errors" class="error-message">
+          <span *ngIf="f['confirmPassword'].errors['required']">Confirm password is required</span>
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="loading"
+      >
+        {{ loading ? 'Creating Account...' : 'Create Account' }}
+      </button>
+    </form>
+  </div>
+</div>

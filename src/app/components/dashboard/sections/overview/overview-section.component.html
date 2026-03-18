@@ -1,0 +1,67 @@
+<div class="section-shell overview-content">
+  <h2>Welcome, {{ memberProfile?.name }}!</h2>
+
+  <div class="content-grid">
+    <section class="content-section">
+      <h3>Recommendation Requests For You</h3>
+      <div class="section-body">
+        <div *ngIf="recommendationRequests.length === 0" class="empty-state">
+          No recommendation requests for you yet.
+        </div>
+        <div *ngFor="let req of recommendationRequests" class="request-item">
+          <p>From: <strong>{{ req.recommendedMemberName }}</strong></p>
+          <p class="text-muted">{{ req.remarks }}</p>
+          <p class="timestamp">{{ req.createdAt | date:'short' }}</p>
+          <span [class]="'status ' + getStatusClass(req.status)">{{ req.status }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <h3>Meeting Requests For You</h3>
+      <div class="section-body">
+        <div *ngIf="meetingRequests.length === 0" class="empty-state">
+          No meeting requests for you yet.
+        </div>
+        <div *ngFor="let req of meetingRequests" class="request-item">
+          <p>From: <strong>{{ req.requesterName }}</strong></p>
+          <p class="text-muted">{{ req.remarks }}</p>
+          <p class="timestamp">{{ req.createdAt | date:'short' }}</p>
+          <span [class]="'status ' + getStatusClass(req.status)">{{ req.status }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <h3>Referrals</h3>
+      <div class="section-body">
+        <div *ngIf="referrals.length === 0" class="empty-state">
+          No referrals received from members yet.
+        </div>
+        <div *ngFor="let ref of referrals" class="request-item">
+          <p>Referral: <strong>{{ ref.referrerName }}</strong></p>
+          <p class="text-muted">Type: {{ ref.referralType === 'inside' ? 'Inside' : 'Outside' }}</p>
+          <p class="text-muted">{{ ref.remarks }}</p>
+          <p class="timestamp">{{ ref.createdAt | date:'short' }}</p>
+          <span [class]="'status ' + getStatusClass(ref.status)">{{ ref.status }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <h3>Done Business</h3>
+      <div class="section-body">
+        <div *ngIf="doneBusinesses.length === 0" class="empty-state">
+          No done business recorded yet.
+        </div>
+        <div *ngFor="let business of doneBusinesses" class="request-item">
+          <p>Member: <strong>{{ business.memberName }}</strong></p>
+          <p class="text-muted">Amount: INR {{ business.amountClosed | number:'1.2-2' }}</p>
+          <p class="text-muted">{{ business.remarks }}</p>
+          <p class="timestamp">{{ business.createdAt | date:'short' }}</p>
+          <span [class]="'status ' + getStatusClass(business.status)">{{ business.status }}</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

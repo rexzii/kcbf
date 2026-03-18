@@ -1,0 +1,29 @@
+<div class="section-shell">
+  <h2>Get Recommendation</h2>
+  <form [formGroup]="recommendationForm" (ngSubmit)="submitForm.emit()" class="form-container">
+    <div class="form-section">
+      <div class="form-group">
+        <label for="memberSearchRec">Search Individual Member <span class="required">*</span></label>
+        <select id="memberSearchRec" formControlName="memberSearch" class="form-control">
+          <option value="">Select member</option>
+          <option *ngFor="let member of memberOptions" [value]="member.name">{{ member.name }}</option>
+        </select>
+        <div class="error-message" *ngIf="recommendationForm.get('memberSearch')?.touched && recommendationForm.get('memberSearch')?.hasError('required')">
+          Please select a member to request recommendation from
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="recRemark">Remark <span class="required">*</span></label>
+        <textarea id="recRemark" formControlName="remarks" class="form-control" placeholder="Add recommendation request remark" rows="4"></textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="loading">
+        {{ loading ? 'Submitting...' : 'Submit Request' }}
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="cancel.emit()">Cancel</button>
+    </div>
+  </form>
+</div>

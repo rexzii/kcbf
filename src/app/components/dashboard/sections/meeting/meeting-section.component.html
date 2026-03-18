@@ -1,0 +1,37 @@
+<div class="section-shell">
+  <h2>Request Meeting</h2>
+  <form [formGroup]="meetingForm" (ngSubmit)="submitForm.emit()" class="form-container">
+    <div class="form-section">
+      <div class="form-group">
+        <label for="memberSearchMeet">Member Search <span class="required">*</span></label>
+        <select id="memberSearchMeet" formControlName="memberSearch" class="form-control">
+          <option value="">Select member</option>
+          <option *ngFor="let member of memberOptions" [value]="member.name">{{ member.name }}</option>
+        </select>
+        <div class="error-message" *ngIf="meetingForm.get('memberSearch')?.touched && meetingForm.get('memberSearch')?.hasError('required')">
+          Please select a member
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="preferredDate">Preferred Date <span class="required">*</span></label>
+        <input type="datetime-local" id="preferredDate" formControlName="preferredDate" class="form-control">
+        <div class="error-message" *ngIf="meetingForm.get('preferredDate')?.touched && meetingForm.get('preferredDate')?.hasError('required')">
+          Please select a preferred date
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="meetRemark">Remarks</label>
+        <textarea id="meetRemark" formControlName="remarks" class="form-control" placeholder="Add meeting request remarks" rows="4"></textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="loading">
+        {{ loading ? 'Submitting...' : 'Request Meeting' }}
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="cancel.emit()">Cancel</button>
+    </div>
+  </form>
+</div>

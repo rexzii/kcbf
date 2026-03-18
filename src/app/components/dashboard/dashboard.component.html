@@ -1,0 +1,105 @@
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <div class="header-content">
+      <h1>Member Dashboard</h1>
+      <button (click)="logout()" class="btn-logout">Logout</button>
+    </div>
+  </div>
+
+  <div class="dashboard-wrapper">
+    <aside class="profile-sidebar" [class.open]="sidebarOpen()">
+      <div class="profile-card" *ngIf="memberProfile">
+        <div class="profile-avatar">
+          {{ memberProfile.name.charAt(0).toUpperCase() || 'M' }}
+        </div>
+        <h3 class="profile-name">{{ memberProfile.name }}</h3>
+        <p class="profile-email">{{ memberProfile.email }}</p>
+        <p class="profile-contact">WhatsApp: {{ memberProfile.whatsappNumber | slice:0:3 }}****{{ memberProfile.whatsappNumber | slice:7 }}</p>
+        <p class="profile-status">Membership: {{ memberProfile.ekda || 'Pending' }}</p>
+        <button (click)="setActiveTab('profile')" class="btn-edit-profile">Edit Profile</button>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Dashboard Sections">
+        <button
+          *ngFor="let item of navItems"
+          class="side-nav-item"
+          [class.active]="activeTab() === item.key"
+          (click)="setActiveTab(item.key)">
+          <span class="side-label">{{ item.label }}</span>
+          <span class="side-badge" *ngIf="getTabCount(item.key) > 0">{{ getTabCount(item.key) }}</span>
+        </button>
+      </nav>
+    </aside>
+
+    <div class="sidebar-backdrop" *ngIf="sidebarOpen()" (click)="toggleSidebar()"></div>
+
+    <main class="dashboard-main">
+      <div class="panel-toolbar">
+        <button class="sidebar-toggle" type="button" (click)="toggleSidebar()">Menu</button>
+        <p class="panel-label" *ngFor="let item of navItems" [class.show]="activeTab() === item.key">{{ item.label }}</p>
+      </div>
+
+      <div class="alerts-container">
+        <div *ngIf="successMessage()" class="alert alert-success">
+          {{ successMessage() }}
+        </div>
+        <div *ngIf="errorMessage()" class="alert alert-danger">
+          {{ errorMessage() }}
+        </div>
+      </div>
+
+      <app-overview-section
+        *ngIf="activeTab() === 'overview'"
+        [memberProfile]="memberProfile"
+        [recommendationRequests]="recommendationRequests"
+        [meetingRequests]="meetingRequests"
+        [referrals]="referrals"
+        [doneBusinesses]="doneBusinesses">
+      </app-overview-section>
+
+      <app-profile-section
+        *ngIf="activeTab() === 'profile'"
+        [profileForm]="profileForm"
+        [loading]="loading()"
+        (submitForm)="onProfileSubmit()"
+        (cancel)="setActiveTab('overview')">
+      </app-profile-section>
+
+      <app-referral-section
+        *ngIf="activeTab() === 'referral'"
+        [referralForm]="referralForm"
+        [memberOptions]="registeredMembers"
+        [loading]="loading()"
+        (submitForm)="onReferralSubmit()"
+        (cancel)="setActiveTab('overview')">
+      </app-referral-section>
+
+      <app-business-section
+        *ngIf="activeTab() === 'business'"
+        [businessForm]="businessForm"
+        [memberOptions]="registeredMembers"
+        [loading]="loading()"
+        (submitForm)="onBusinessSubmit()"
+        (cancel)="setActiveTab('overview')">
+      </app-business-section>
+
+      <app-recommendation-section
+        *ngIf="activeTab() === 'recommendation'"
+        [recommendationForm]="recommendationForm"
+        [memberOptions]="registeredMembers"
+        [loading]="loading()"
+        (submitForm)="onRecommendationSubmit()"
+        (cancel)="setActiveTab('overview')">
+      </app-recommendation-section>
+
+      <app-meeting-section
+        *ngIf="activeTab() === 'meeting'"
+        [meetingForm]="meetingForm"
+        [memberOptions]="registeredMembers"
+        [loading]="loading()"
+        (submitForm)="onMeetingSubmit()"
+        (cancel)="setActiveTab('overview')">
+      </app-meeting-section>
+    </main>
+  </div>
+</div>
