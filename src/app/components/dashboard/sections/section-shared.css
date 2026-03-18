@@ -9,6 +9,25 @@
   font-family: 'Space Grotesk', 'Manrope', sans-serif;
 }
 
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.profile-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.profile-top-actions .btn {
+  padding: 0.62rem 1.05rem;
+  white-space: nowrap;
+}
+
 .form-container {
   display: grid;
   gap: 1.25rem;
@@ -165,7 +184,21 @@ textarea.form-control {
     flex-direction: column;
   }
 
+  .section-header {
+    flex-direction: column;
+  }
+
+  .profile-top-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .btn {
     width: 100%;
+  }
+
+  .profile-top-actions .btn {
+    width: auto;
   }
 }

@@ -26,6 +26,19 @@ const DB_CONFIG = {
 
 const pool = mysql.createPool(DB_CONFIG);
 
+async function ensureEkdaColumn() {
+  const connection = await pool.getConnection();
+  try {
+    const [columns] = await connection.execute("SHOW COLUMNS FROM users LIKE 'ekda_type'");
+    if (columns.length === 0) {
+      await connection.execute('ALTER TABLE users ADD COLUMN ekda_type VARCHAR(50) NULL AFTER state');
+      console.log('✅ Added missing users.ekda_type column');
+    }
+  } finally {
+    connection.release();
+  }
+}
+
 // ========================================
 // MIDDLEWARE
 // ========================================
@@ -205,7 +218,7 @@ app.get('/api/auth/user/:id', async (req, res) => {
     const connection = await pool.getConnection();
 
     const [users] = await connection.execute(
-      'SELECT id, name, state, email, whatsapp_number, date_of_birth, company_name, industry, brief_profile, working_since, areas_of_interest, linkedin_profile, website, created_at FROM users WHERE id = ?',
+      'SELECT id, name, state, ekda_type, email, whatsapp_number, date_of_birth, company_name, industry, brief_profile, working_since, areas_of_interest, linkedin_profile, website, created_at FROM users WHERE id = ?',
       [req.params.id]
     );
 
@@ -227,6 +240,302 @@ app.get('/api/auth/user/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error fetching user'
+    });
+  }
+});
+
+// Update user endpoint
+app.put('/api/auth/user/:id', async (req, res) => {
+  const userId = Number.parseInt(req.params.id, 10);
+  const {
+    name,
+    email,
+    ekda,
+    whatsappNumber,
+    dateOfBirth,
+    companyName,
+    industry,
+    businessProfile,
+    workingSince,
+    areasOfInterest,
+    linkedinProfile,
+    website
+  } = req.body;
+
+  try {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user id'
+      });
+    }
+
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name and email are required'
+      });
+    }
+
+    const connection = await pool.getConnection();
+
+    const normalize = (value) => {
+      if (value === undefined || value === null) {
+        return null;
+      }
+      if (typeof value === 'string' && value.trim() === '') {
+        return null;
+      }
+      return value;
+    };
+
+    const [existing] = await connection.execute(
+      'SELECT id FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (existing.length === 0) {
+      await connection.release();
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const [emailOwner] = await connection.execute(
+      'SELECT id FROM users WHERE email = ? AND id != ?',
+      [email, userId]
+    );
+
+    if (emailOwner.length > 0) {
+      await connection.release();
+      return res.status(409).json({
+        success: false,
+        message: 'Email is already used by another account'
+      });
+    }
+
+    await connection.execute(
+      `UPDATE users
+          SET name = ?,
+              email = ?,
+              ekda_type = ?,
+              whatsapp_number = COALESCE(?, whatsapp_number),
+              date_of_birth = COALESCE(?, date_of_birth),
+              company_name = COALESCE(?, company_name),
+              industry = COALESCE(?, industry),
+              brief_profile = COALESCE(?, brief_profile),
+              working_since = COALESCE(?, working_since),
+              areas_of_interest = COALESCE(?, areas_of_interest),
+              linkedin_profile = ?,
+              website = ?,
+              updated_at = NOW()
+        WHERE id = ?`,
+      [
+        name,
+        email,
+        normalize(ekda),
+        normalize(whatsappNumber),
+        normalize(dateOfBirth),
+        normalize(companyName),
+        normalize(industry),
+        normalize(businessProfile),
+        normalize(workingSince),
+        normalize(areasOfInterest),
+        normalize(linkedinProfile),
+        normalize(website),
+        userId
+      ]
+    );
+
+    const [users] = await connection.execute(
+      'SELECT id, name, state, ekda_type, email, whatsapp_number, date_of_birth, company_name, industry, brief_profile, working_since, areas_of_interest, linkedin_profile, website, created_at FROM users WHERE id = ?',
+      [userId]
+    );
+
+    await connection.release();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: users[0]
+    });
+  } catch (error) {
+    console.error('User update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error updating user'
+    });
+  }
+});
+
+// Get profile for dashboard
+app.get('/api/profile/:id', async (req, res) => {
+  try {
+    const userId = Number.parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user id'
+      });
+    }
+
+    const connection = await pool.getConnection();
+
+    const [users] = await connection.execute(
+      `SELECT id, name, email, ekda_type, whatsapp_number, date_of_birth, company_name, industry,
+              brief_profile, working_since, areas_of_interest, linkedin_profile, website
+         FROM users
+        WHERE id = ?`,
+      [userId]
+    );
+
+    await connection.release();
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: users[0]
+    });
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching profile'
+    });
+  }
+});
+
+// Update profile for dashboard
+app.put('/api/profile/:id', async (req, res) => {
+  const userId = Number.parseInt(req.params.id, 10);
+  const {
+    name,
+    email,
+    ekda,
+    whatsappNumber,
+    dateOfBirth,
+    companyName,
+    industry,
+    businessProfile,
+    workingSince,
+    areasOfInterest,
+    linkedinProfile,
+    website
+  } = req.body;
+
+  try {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user id'
+      });
+    }
+
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name and email are required'
+      });
+    }
+
+    const connection = await pool.getConnection();
+    const normalize = (value) => {
+      if (value === undefined || value === null) {
+        return null;
+      }
+      if (typeof value === 'string' && value.trim() === '') {
+        return null;
+      }
+      return value;
+    };
+
+    const [existing] = await connection.execute(
+      'SELECT id FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (existing.length === 0) {
+      await connection.release();
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const [emailOwner] = await connection.execute(
+      'SELECT id FROM users WHERE email = ? AND id != ?',
+      [email, userId]
+    );
+
+    if (emailOwner.length > 0) {
+      await connection.release();
+      return res.status(409).json({
+        success: false,
+        message: 'Email is already used by another account'
+      });
+    }
+
+    await connection.execute(
+      `UPDATE users
+          SET name = ?,
+              email = ?,
+              ekda_type = ?,
+              whatsapp_number = COALESCE(?, whatsapp_number),
+              date_of_birth = COALESCE(?, date_of_birth),
+              company_name = COALESCE(?, company_name),
+              industry = COALESCE(?, industry),
+              brief_profile = COALESCE(?, brief_profile),
+              working_since = COALESCE(?, working_since),
+              areas_of_interest = COALESCE(?, areas_of_interest),
+              linkedin_profile = ?,
+              website = ?,
+              updated_at = NOW()
+        WHERE id = ?`,
+      [
+        name,
+        email,
+        normalize(ekda),
+        normalize(whatsappNumber),
+        normalize(dateOfBirth),
+        normalize(companyName),
+        normalize(industry),
+        normalize(businessProfile),
+        normalize(workingSince),
+        normalize(areasOfInterest),
+        normalize(linkedinProfile),
+        normalize(website),
+        userId
+      ]
+    );
+
+    const [users] = await connection.execute(
+      `SELECT id, name, email, ekda_type, whatsapp_number, date_of_birth, company_name, industry,
+              brief_profile, working_since, areas_of_interest, linkedin_profile, website
+         FROM users
+        WHERE id = ?`,
+      [userId]
+    );
+
+    await connection.release();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: users[0]
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error updating profile'
     });
   }
 });
@@ -287,17 +596,28 @@ app.use((err, req, res, next) => {
 // ========================================
 const PORT = 3000;
 
-const server = app.listen(PORT, () => {
-  console.log(`✅ Server is running on http://localhost:${PORT}`);
-  console.log(`📁 Database: ${DB_CONFIG.database}`);
-  console.log(`🗄️  User: ${DB_CONFIG.user}@${DB_CONFIG.host}`);
-});
-
-server.on('error', (error) => {
-  if (error && error.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use. Stop the old server, then run npm start once.`);
+async function startServer() {
+  try {
+    await ensureEkdaColumn();
+  } catch (error) {
+    console.error('❌ Schema check failed:', error.message);
     process.exit(1);
   }
-  console.error('❌ Server startup error:', error);
-  process.exit(1);
-});
+
+  const server = app.listen(PORT, () => {
+    console.log(`✅ Server is running on http://localhost:${PORT}`);
+    console.log(`📁 Database: ${DB_CONFIG.database}`);
+    console.log(`🗄️  User: ${DB_CONFIG.user}@${DB_CONFIG.host}`);
+  });
+
+  server.on('error', (error) => {
+    if (error && error.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use. Stop the old server, then run npm start once.`);
+      process.exit(1);
+    }
+    console.error('❌ Server startup error:', error);
+    process.exit(1);
+  });
+}
+
+startServer();

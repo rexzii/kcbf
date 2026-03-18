@@ -49,7 +49,7 @@ export interface MemberProfile {
   email: string;
   ekda: string;
   whatsappNumber: string;
-  dateOfBirth: Date | null;
+  dateOfBirth: string | null;
   companyName: string;
   industry: string;
   businessProfile: string;

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { 
   DashboardData, 
   MemberProfile, 
@@ -10,6 +11,26 @@ import {
   MeetingRequest 
 } from '../models/dashboard.model';
 import { UserLookup } from '../models/user.model';
+
+interface ProfileApiResponse {
+  success: boolean;
+  message?: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    ekda_type: string | null;
+    whatsapp_number: string | null;
+    date_of_birth: string | null;
+    company_name: string | null;
+    industry: string | null;
+    brief_profile: string | null;
+    working_since: number | string | null;
+    areas_of_interest: string | null;
+    linkedin_profile: string | null;
+    website: string | null;
+  };
+}
 
 @Injectable({
   providedIn: 'root'
@@ -21,19 +42,41 @@ export class DashboardService {
 
   constructor(private http: HttpClient) {}
 
+  private mapProfileResponse(response: ProfileApiResponse): MemberProfile {
+    return {
+      id: String(response.user.id),
+      name: response.user.name,
+      email: response.user.email,
+      ekda: response.user.ekda_type ?? '',
+      whatsappNumber: response.user.whatsapp_number ?? '',
+      dateOfBirth: response.user.date_of_birth,
+      companyName: response.user.company_name ?? '',
+      industry: response.user.industry ?? '',
+      businessProfile: response.user.brief_profile ?? '',
+      workingSince: response.user.working_since ? Number(response.user.working_since) : null,
+      areasOfInterest: response.user.areas_of_interest ?? '',
+      linkedinProfile: response.user.linkedin_profile ?? '',
+      website: response.user.website ?? ''
+    };
+  }
+
   // Get dashboard data
   getDashboardData(): Observable<DashboardData> {
     return this.http.get<DashboardData>(`${this.apiUrl}/dashboard`);
   }
 
   // Get member profile
-  getMemberProfile(): Observable<MemberProfile> {
-    return this.http.get<MemberProfile>(`${this.apiUrl}/profile`);
+  getMemberProfile(userId: number): Observable<MemberProfile> {
+    return this.http
+      .get<ProfileApiResponse>(`${this.apiUrl}/auth/user/${userId}`)
+      .pipe(map((response) => this.mapProfileResponse(response)));
   }
 
   // Update member profile
-  updateMemberProfile(profile: MemberProfile): Observable<MemberProfile> {
-    return this.http.put<MemberProfile>(`${this.apiUrl}/profile`, profile);
+  updateMemberProfile(userId: number, profile: MemberProfile): Observable<MemberProfile> {
+    return this.http
+      .put<ProfileApiResponse>(`${this.apiUrl}/auth/user/${userId}`, profile)
+      .pipe(map((response) => this.mapProfileResponse(response)));
   }
 
   // Submit referral

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   state VARCHAR(100) NOT NULL,
+  ekda_type VARCHAR(50),
   email VARCHAR(255) UNIQUE NOT NULL,
   whatsapp_number VARCHAR(15) NOT NULL,
   date_of_birth DATE NOT NULL,

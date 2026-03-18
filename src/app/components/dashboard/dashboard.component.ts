@@ -41,12 +41,13 @@ interface DashboardNavItem {
 })
 export class DashboardComponent implements OnInit {
   currentUser$!: Observable<User | null>;
+  currentUserId: number | null = null;
   activeTab = signal<TabKey>('overview');
   sidebarOpen = signal(false);
+  isProfileEditing = signal(false);
 
   navItems: DashboardNavItem[] = [
     { key: 'overview', label: 'Dashboard', shortLabel: 'Home' },
-    { key: 'profile', label: 'Edit Profile', shortLabel: 'Profile' },
     { key: 'referral', label: 'Upload Referral', shortLabel: 'Referral' },
     { key: 'business', label: 'Upload Done Business', shortLabel: 'Business' },
     { key: 'recommendation', label: 'Get Recommendation', shortLabel: 'Recommend' },
@@ -125,6 +126,8 @@ export class DashboardComponent implements OnInit {
       website: ['']
     });
 
+    this.profileForm.disable();
+
     this.referralForm = this.fb.group({
       referrerName: ['', [Validators.required]],
       referrerContact: ['', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]],
@@ -173,17 +176,41 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadMemberProfile(): void {
-    this.dashboardService.getMemberProfile().subscribe({
-      next: (profile) => {
-        this.memberProfile = profile;
-        this.profileForm.patchValue(profile);
-        this.cdr.markForCheck();
+    this.authService.getCurrentUser().pipe(take(1)).subscribe({
+      next: (currentUser) => {
+        if (!currentUser?.id) {
+          this.errorMessage.set('Unable to identify logged-in user. Please login again.');
+          this.cdr.markForCheck();
+          return;
+        }
+
+        this.currentUserId = currentUser.id;
+        this.dashboardService.getMemberProfile(currentUser.id).subscribe({
+          next: (profile) => {
+            this.memberProfile = profile;
+            this.profileForm.patchValue(profile);
+            this.profileForm.disable();
+            this.isProfileEditing.set(false);
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            console.error('Error loading member profile:', err);
+            this.errorMessage.set('Unable to load profile data.');
+            this.cdr.markForCheck();
+          }
+        });
       },
       error: (err) => {
-        console.error('Error loading member profile:', err);
-        this.cdr.markForCheck();
+        console.error('Error reading logged-in user:', err);
       }
     });
+  }
+
+  onStartProfileEdit(): void {
+    this.isProfileEditing.set(true);
+    this.profileForm.enable();
+    this.clearMessages();
+    this.cdr.markForCheck();
   }
 
   setActiveTab(tab: TabKey): void {
@@ -211,6 +238,24 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  getActiveTabLabel(): string {
+    switch (this.activeTab()) {
+      case 'profile':
+        return 'Edit Profile';
+      case 'referral':
+        return 'Upload Referral';
+      case 'business':
+        return 'Upload Done Business';
+      case 'recommendation':
+        return 'Get Recommendation';
+      case 'meeting':
+        return 'Request Meeting';
+      case 'overview':
+      default:
+        return 'Dashboard';
+    }
+  }
+
   private handleInvalidForm(form: FormGroup, message: string): boolean {
     if (form.valid) {
       return false;
@@ -223,6 +268,18 @@ export class DashboardComponent implements OnInit {
   }
 
   onProfileSubmit(): void {
+    if (!this.currentUserId) {
+      this.errorMessage.set('Unable to update profile because user session was not found.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    if (!this.isProfileEditing()) {
+      this.errorMessage.set('Click Edit Profile before saving changes.');
+      this.cdr.markForCheck();
+      return;
+    }
+
     if (this.handleInvalidForm(this.profileForm, 'Please complete required profile fields first.')) {
       return;
     }
@@ -231,9 +288,12 @@ export class DashboardComponent implements OnInit {
     this.cdr.markForCheck();
     const profileData = this.profileForm.value;
     
-    this.dashboardService.updateMemberProfile(profileData).subscribe({
+    this.dashboardService.updateMemberProfile(this.currentUserId, profileData).subscribe({
       next: (updated) => {
         this.memberProfile = updated;
+        this.profileForm.patchValue(updated);
+        this.profileForm.disable();
+        this.isProfileEditing.set(false);
         this.loading.set(false);
         this.successMessage.set('Profile updated successfully!');
         this.cdr.markForCheck();
@@ -246,6 +306,16 @@ export class DashboardComponent implements OnInit {
         console.error('Error:', err);
       }
     });
+  }
+
+  onProfileCancel(): void {
+    if (this.memberProfile) {
+      this.profileForm.patchValue(this.memberProfile);
+    }
+    this.profileForm.disable();
+    this.isProfileEditing.set(false);
+    this.clearMessages();
+    this.cdr.markForCheck();
   }
 
   onReferralSubmit(): void {

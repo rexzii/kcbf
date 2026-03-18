@@ -1,6 +1,20 @@
 <div class="section-shell">
-  <h2>Edit Profile</h2>
   <form [formGroup]="profileForm" (ngSubmit)="submitForm.emit()" class="form-container">
+    <div class="section-header">
+      <h2>Edit Profile</h2>
+      <div class="profile-top-actions">
+        <button *ngIf="!isEditing" type="button" class="btn btn-primary" (click)="startEdit.emit()" [disabled]="loading">
+          Edit Profile
+        </button>
+        <button *ngIf="isEditing" type="submit" class="btn btn-primary" [disabled]="loading">
+          {{ loading ? 'Saving...' : 'Save Profile' }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="cancel.emit()" [disabled]="loading">
+          {{ isEditing ? 'Cancel' : 'Back' }}
+        </button>
+      </div>
+    </div>
+
     <div class="form-grid">
       <div class="form-section">
         <h3>Personal Information</h3>
@@ -27,9 +41,10 @@
         <div class="form-group">
           <label for="ekda">Ekda</label>
           <select id="ekda" formControlName="ekda" class="form-control">
-            <option value="">Select if not known</option>
-            <option value="ekda1">EKDA Member</option>
-            <option value="ekda2">Associate Member</option>
+            <option value="">Select membership type</option>
+            <option value="Life Member">Life Member</option>
+            <option value="Associate Member">Associate Member</option>
+            <option value="Corporate Member">Corporate Member</option>
           </select>
         </div>
 
@@ -89,13 +104,6 @@
           <input type="url" id="website" formControlName="website" class="form-control" placeholder="https://...">
         </div>
       </div>
-    </div>
-
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary" [disabled]="loading">
-        {{ loading ? 'Saving...' : 'Save Profile' }}
-      </button>
-      <button type="button" class="btn btn-secondary" (click)="cancel.emit()">Cancel</button>
     </div>
   </form>
 </div>

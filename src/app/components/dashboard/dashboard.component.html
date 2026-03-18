@@ -15,7 +15,6 @@
         <h3 class="profile-name">{{ memberProfile.name }}</h3>
         <p class="profile-email">{{ memberProfile.email }}</p>
         <p class="profile-contact">WhatsApp: {{ memberProfile.whatsappNumber | slice:0:3 }}****{{ memberProfile.whatsappNumber | slice:7 }}</p>
-        <p class="profile-status">Membership: {{ memberProfile.ekda || 'Pending' }}</p>
         <button (click)="setActiveTab('profile')" class="btn-edit-profile">Edit Profile</button>
       </div>
 
@@ -36,7 +35,7 @@
     <main class="dashboard-main">
       <div class="panel-toolbar">
         <button class="sidebar-toggle" type="button" (click)="toggleSidebar()">Menu</button>
-        <p class="panel-label" *ngFor="let item of navItems" [class.show]="activeTab() === item.key">{{ item.label }}</p>
+        <p class="panel-label show">{{ getActiveTabLabel() }}</p>
       </div>
 
       <div class="alerts-container">
@@ -61,8 +60,10 @@
         *ngIf="activeTab() === 'profile'"
         [profileForm]="profileForm"
         [loading]="loading()"
+        [isEditing]="isProfileEditing()"
+        (startEdit)="onStartProfileEdit()"
         (submitForm)="onProfileSubmit()"
-        (cancel)="setActiveTab('overview')">
+        (cancel)="onProfileCancel()">
       </app-profile-section>
 
       <app-referral-section

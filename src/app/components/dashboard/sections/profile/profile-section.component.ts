@@ -12,7 +12,9 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 export class ProfileSectionComponent {
   @Input({ required: true }) profileForm!: FormGroup;
   @Input() loading = false;
+  @Input() isEditing = false;
 
+  @Output() startEdit = new EventEmitter<void>();
   @Output() submitForm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 }
