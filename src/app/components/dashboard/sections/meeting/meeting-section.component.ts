@@ -13,8 +13,24 @@ import { UserLookup } from '../../../../models/user.model';
 export class MeetingSectionComponent {
   @Input({ required: true }) meetingForm!: FormGroup;
   @Input() memberOptions: UserLookup[] = [];
+  @Input() selectedMembers: UserLookup[] = [];
   @Input() loading = false;
 
   @Output() submitForm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
+  @Output() addMember = new EventEmitter<number>();
+  @Output() removeMember = new EventEmitter<number>();
+
+  onAddMember(): void {
+    const selectedValue = Number(this.meetingForm.get('memberSearch')?.value);
+    if (!Number.isInteger(selectedValue) || selectedValue <= 0) {
+      return;
+    }
+
+    this.addMember.emit(selectedValue);
+  }
+
+  onRemoveMember(memberId: number): void {
+    this.removeMember.emit(memberId);
+  }
 }

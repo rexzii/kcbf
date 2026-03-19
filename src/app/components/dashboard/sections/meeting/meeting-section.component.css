@@ -1,1 +1,57 @@
 @import '../section-shared.css';
+
+.member-search-row {
+	display: flex;
+	gap: 0.6rem;
+	align-items: center;
+}
+
+.member-search-row .form-control {
+	flex: 1;
+}
+
+.btn-add-member {
+	width: 2.35rem;
+	height: 2.35rem;
+	border: 1px solid #2b67dc;
+	border-radius: 0.55rem;
+	background: #2b67dc;
+	color: #fff;
+	font-size: 1.3rem;
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.btn-add-member:hover {
+	background: #1f53ba;
+}
+
+.selected-members {
+	margin-top: 0.6rem;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.member-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.25rem 0.55rem;
+	border-radius: 999px;
+	border: 1px solid #cad7f4;
+	background: #edf3ff;
+	color: #20448a;
+	font-size: 0.82rem;
+	font-weight: 600;
+}
+
+.remove-pill {
+	border: none;
+	background: transparent;
+	color: #7d2131;
+	font-size: 0.88rem;
+	cursor: pointer;
+	padding: 0;
+}

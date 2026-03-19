@@ -38,3 +38,21 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   INDEX idx_user_id (user_id),
   INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Meeting Requests Table
+CREATE TABLE IF NOT EXISTS meeting_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  requester_id INT NOT NULL,
+  recipient_id INT NOT NULL,
+  preferred_date DATETIME NOT NULL,
+  remarks LONGTEXT,
+  status ENUM('pending', 'scheduled', 'cancelled') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_requester_id (requester_id),
+  INDEX idx_recipient_id (recipient_id),
+  INDEX idx_preferred_date (preferred_date),
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

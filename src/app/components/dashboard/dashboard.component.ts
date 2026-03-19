@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { Observable, take } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { DashboardService } from '../../services/dashboard.service';
-import { MemberProfile, Referral, DoneBusiness, Recommendation, MeetingRequest, DashboardData } from '../../models/dashboard.model';
+import { MemberProfile, Referral, DoneBusiness, Recommendation, MeetingRequest, DashboardData, MeetingRequestPayload } from '../../models/dashboard.model';
 import { User, UserLookup } from '../../models/user.model';
 import { OverviewSectionComponent } from './sections/overview/overview-section.component';
 import { ProfileSectionComponent } from './sections/profile/profile-section.component';
@@ -72,6 +72,7 @@ export class DashboardComponent implements OnInit {
   referrals: Referral[] = [];
   doneBusinesses: DoneBusiness[] = [];
   registeredMembers: UserLookup[] = [];
+  selectedMeetingMembers: UserLookup[] = [];
 
   constructor(
     private authService: AuthService,
@@ -88,6 +89,7 @@ export class DashboardComponent implements OnInit {
     this.loadDashboardData();
     this.loadMemberProfile();
     this.loadRegisteredMembers();
+    this.loadMeetingRequestsForCurrentUser();
   }
 
   private loadRegisteredMembers(): void {
@@ -148,9 +150,28 @@ export class DashboardComponent implements OnInit {
     });
 
     this.meetingForm = this.fb.group({
-      memberSearch: ['', [Validators.required]],
+      memberSearch: [''],
       preferredDate: ['', [Validators.required]],
       remarks: ['']
+    });
+  }
+
+  private loadMeetingRequestsForCurrentUser(): void {
+    const currentUserId = this.authService.currentUser$.value?.id;
+
+    if (!currentUserId) {
+      return;
+    }
+
+    this.dashboardService.getMeetingRequests(currentUserId).subscribe({
+      next: (requests) => {
+        this.meetingRequests = requests;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error loading meeting requests:', err);
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -161,7 +182,6 @@ export class DashboardComponent implements OnInit {
       next: (data) => {
         this.dashboardData = data;
         this.recommendationRequests = data.recommendationRequests;
-        this.meetingRequests = data.meetingRequests;
         this.referrals = data.referrals;
         this.doneBusinesses = data.doneBusiness;
         this.loading.set(false);
@@ -228,7 +248,7 @@ export class DashboardComponent implements OnInit {
       case 'recommendation':
         return this.recommendationRequests.length;
       case 'meeting':
-        return this.meetingRequests.length;
+        return 0;
       case 'referral':
         return this.referrals.length;
       case 'business':
@@ -404,16 +424,38 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
+    if (this.selectedMeetingMembers.length === 0) {
+      this.errorMessage.set('Please add at least one member for the meeting request.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const currentUser = this.authService.currentUser$.value;
+
+    if (!currentUser?.id) {
+      this.errorMessage.set('Unable to identify logged in user. Please log in again.');
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.loading.set(true);
     this.cdr.markForCheck();
-    const { memberSearch, ...meetingData } = this.meetingForm.value;
+    const payload: MeetingRequestPayload = {
+      requesterId: currentUser.id,
+      requesterName: currentUser.name,
+      requesterEmail: currentUser.email,
+      recipientIds: this.selectedMeetingMembers.map((member) => member.id),
+      preferredDate: this.meetingForm.value.preferredDate,
+      remarks: this.meetingForm.value.remarks || ''
+    };
     
-    this.dashboardService.submitMeetingRequest(meetingData).subscribe({
-      next: (meeting) => {
-        this.meetingRequests.unshift(meeting);
+    this.dashboardService.submitMeetingRequest(payload).subscribe({
+      next: (response) => {
         this.meetingForm.reset();
+        this.selectedMeetingMembers = [];
         this.loading.set(false);
-        this.successMessage.set('Meeting request submitted successfully!');
+        this.successMessage.set(response.message || 'Meeting request submitted successfully!');
+        this.loadMeetingRequestsForCurrentUser();
         this.cdr.markForCheck();
         setTimeout(() => this.clearMessages(), 3000);
       },
@@ -424,6 +466,27 @@ export class DashboardComponent implements OnInit {
         console.error('Error:', err);
       }
     });
+  }
+
+  onMeetingAddMember(memberId: number): void {
+    const alreadySelected = this.selectedMeetingMembers.some((member) => member.id === memberId);
+    if (alreadySelected) {
+      return;
+    }
+
+    const member = this.registeredMembers.find((item) => item.id === memberId);
+    if (!member) {
+      return;
+    }
+
+    this.selectedMeetingMembers = [...this.selectedMeetingMembers, member];
+    this.meetingForm.patchValue({ memberSearch: '' });
+    this.cdr.markForCheck();
+  }
+
+  onMeetingRemoveMember(memberId: number): void {
+    this.selectedMeetingMembers = this.selectedMeetingMembers.filter((member) => member.id !== memberId);
+    this.cdr.markForCheck();
   }
 
   logout(): void {

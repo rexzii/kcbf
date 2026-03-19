@@ -569,6 +569,126 @@ app.get('/api/auth/users', async (req, res) => {
   }
 });
 
+// Create meeting requests for one or more recipients
+app.post('/api/meeting-requests', async (req, res) => {
+  const {
+    requesterId,
+    requesterName,
+    requesterEmail,
+    recipientIds,
+    preferredDate,
+    remarks
+  } = req.body;
+
+  if (!Number.isInteger(requesterId) || requesterId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid requesterId is required' });
+  }
+
+  if (!requesterName || !requesterEmail) {
+    return res.status(400).json({ success: false, message: 'Requester details are required' });
+  }
+
+  if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
+    return res.status(400).json({ success: false, message: 'At least one recipient is required' });
+  }
+
+  if (!preferredDate) {
+    return res.status(400).json({ success: false, message: 'Preferred date is required' });
+  }
+
+  const uniqueRecipientIds = [...new Set(recipientIds
+    .map((id) => Number.parseInt(id, 10))
+    .filter((id) => Number.isInteger(id) && id > 0 && id !== requesterId))];
+
+  if (uniqueRecipientIds.length === 0) {
+    return res.status(400).json({ success: false, message: 'Please select valid recipients' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const placeholders = uniqueRecipientIds.map(() => '?').join(', ');
+    const [validUsers] = await connection.execute(
+      `SELECT id FROM users WHERE id IN (${placeholders})`,
+      uniqueRecipientIds
+    );
+
+    if (validUsers.length !== uniqueRecipientIds.length) {
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: 'One or more selected members are invalid' });
+    }
+
+    for (const recipientId of uniqueRecipientIds) {
+      await connection.execute(
+        `INSERT INTO meeting_requests (requester_id, recipient_id, preferred_date, remarks, status, created_at)
+         VALUES (?, ?, ?, ?, 'pending', NOW())`,
+        [requesterId, recipientId, preferredDate, remarks || null]
+      );
+    }
+
+    await connection.commit();
+
+    res.status(201).json({
+      success: true,
+      message: `Meeting request sent to ${uniqueRecipientIds.length} member(s).`,
+      created: uniqueRecipientIds.length
+    });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+
+    console.error('Meeting request creation error:', error);
+    res.status(500).json({ success: false, message: 'Server error while creating meeting request' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Get meeting requests for a specific recipient user
+app.get('/api/meeting-requests', async (req, res) => {
+  const userId = Number.parseInt(req.query.userId, 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid userId is required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    const [requests] = await connection.execute(
+      `SELECT
+        mr.id,
+        mr.requester_id AS requesterId,
+        mr.recipient_id AS recipientId,
+        recipient.name AS recipientName,
+        requester.name AS requesterName,
+        requester.email AS requesterEmail,
+        mr.preferred_date AS preferredDate,
+        mr.remarks,
+        mr.created_at AS createdAt,
+        mr.status
+       FROM meeting_requests mr
+       INNER JOIN users requester ON requester.id = mr.requester_id
+       INNER JOIN users recipient ON recipient.id = mr.recipient_id
+       WHERE mr.recipient_id = ?
+       ORDER BY mr.created_at DESC`,
+      [userId]
+    );
+
+    res.status(200).json(requests);
+  } catch (error) {
+    console.error('Meeting requests fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching meeting requests' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running' });
