@@ -57,6 +57,19 @@
   margin-bottom: 0.75rem;
 }
 
+.recommendation-clickable {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.recommendation-clickable:hover,
+.recommendation-clickable:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(34, 63, 118, 0.14);
+  border-color: #b9cdf0;
+  outline: none;
+}
+
 .request-item p {
   margin: 0.32rem 0;
   font-size: 0.9rem;

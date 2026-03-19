@@ -6,7 +6,7 @@
         <label for="memberSearch">Member Search <span class="required">*</span></label>
         <select id="memberSearch" formControlName="memberSearch" class="form-control">
           <option value="">Select member</option>
-          <option *ngFor="let member of memberOptions" [value]="member.name">{{ member.name }}</option>
+          <option *ngFor="let member of memberOptions" [value]="member.id">{{ member.name }}</option>
         </select>
         <div class="error-message" *ngIf="referralForm.get('memberSearch')?.touched && referralForm.get('memberSearch')?.hasError('required')">
           Please select a valid member from search list

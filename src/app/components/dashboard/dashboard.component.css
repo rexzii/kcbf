@@ -396,6 +396,88 @@
   transform: translateY(-1px);
 }
 
+.recommendation-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 19, 43, 0.48);
+  z-index: 30;
+}
+
+.recommendation-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 560px);
+  background: #fff;
+  border-radius: 1rem;
+  border: 1px solid #d7e3f8;
+  box-shadow: 0 28px 60px rgba(12, 32, 74, 0.28);
+  z-index: 31;
+  padding: 1rem;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.popup-header h3 {
+  margin: 0;
+  color: #1a3a76;
+  font-size: 1.25rem;
+}
+
+.popup-close {
+  border: none;
+  background: #eef3ff;
+  color: #2f4f8d;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.popup-subtitle {
+  margin: 0.65rem 0 0.85rem;
+  color: #5f6f8e;
+}
+
+.popup-form .form-group {
+  margin-bottom: 0.9rem;
+}
+
+.popup-form .form-group label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+  color: #2b4370;
+}
+
+.popup-form .form-control {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #c8d7f1;
+  border-radius: 0.7rem;
+  padding: 0.62rem 0.75rem;
+  font: inherit;
+}
+
+.popup-form .form-control:focus {
+  outline: none;
+  border-color: #7aa2ea;
+  box-shadow: 0 0 0 3px rgba(84, 129, 212, 0.16);
+}
+
+.popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
 .request-item p {
   margin: 0.32rem 0;
   font-size: 0.9rem;

@@ -26,7 +26,10 @@
 
       <div class="form-group">
         <label for="bizRemark">Remark <span class="required">*</span></label>
-        <textarea id="bizRemark" formControlName="remark" class="form-control" placeholder="Add remark about done business" rows="4"></textarea>
+        <textarea id="bizRemark" formControlName="remarks" class="form-control" placeholder="Add remark about done business" rows="4"></textarea>
+        <div class="error-message" *ngIf="businessForm.get('remarks')?.touched && businessForm.get('remarks')?.hasError('required')">
+          Remark is required
+        </div>
       </div>
     </div>
 

@@ -5,9 +5,12 @@ import { map } from 'rxjs/operators';
 import { 
   DashboardData, 
   MemberProfile, 
-  Referral, 
+  Referral,
+  ReferralCreatePayload,
   DoneBusiness, 
   Recommendation, 
+  RecommendationRequestPayload,
+  RecommendationResponsePayload,
   MeetingRequest,
   MeetingRequestPayload,
   MeetingRequestCreateResponse
@@ -82,13 +85,13 @@ export class DashboardService {
   }
 
   // Submit referral
-  submitReferral(referral: Omit<Referral, 'id' | 'createdAt' | 'status'>): Observable<Referral> {
+  submitReferral(referral: ReferralCreatePayload): Observable<Referral> {
     return this.http.post<Referral>(`${this.apiUrl}/referrals`, referral);
   }
 
   // Get referrals
-  getReferrals(): Observable<Referral[]> {
-    return this.http.get<Referral[]>(`${this.apiUrl}/referrals`);
+  getReferrals(userId: number): Observable<Referral[]> {
+    return this.http.get<Referral[]>(`${this.apiUrl}/referrals?userId=${userId}`);
   }
 
   // Submit done business
@@ -102,13 +105,18 @@ export class DashboardService {
   }
 
   // Submit recommendation
-  submitRecommendation(recommendation: Omit<Recommendation, 'id' | 'createdAt' | 'status'>): Observable<Recommendation> {
+  submitRecommendation(recommendation: RecommendationRequestPayload): Observable<Recommendation> {
     return this.http.post<Recommendation>(`${this.apiUrl}/recommendations`, recommendation);
   }
 
   // Get recommendations
-  getRecommendations(): Observable<Recommendation[]> {
-    return this.http.get<Recommendation[]>(`${this.apiUrl}/recommendations`);
+  getRecommendations(userId: number): Observable<Recommendation[]> {
+    return this.http.get<Recommendation[]>(`${this.apiUrl}/recommendations?userId=${userId}`);
+  }
+
+  // Submit recommendation response from recipient
+  respondToRecommendation(requestId: string, payload: RecommendationResponsePayload): Observable<{ success: boolean; message: string }> {
+    return this.http.put<{ success: boolean; message: string }>(`${this.apiUrl}/recommendations/${requestId}/respond`, payload);
   }
 
   // Submit meeting request

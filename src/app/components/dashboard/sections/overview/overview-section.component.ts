@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DoneBusiness, MeetingRequest, MemberProfile, Recommendation, Referral } from '../../../../models/dashboard.model';
 
@@ -15,6 +15,15 @@ export class OverviewSectionComponent {
   @Input() meetingRequests: MeetingRequest[] = [];
   @Input() referrals: Referral[] = [];
   @Input() doneBusinesses: DoneBusiness[] = [];
+  @Output() recommendationSelected = new EventEmitter<Recommendation>();
+
+  onRecommendationClick(request: Recommendation): void {
+    this.recommendationSelected.emit(request);
+  }
+
+  getRecommendationStatusLabel(status: Recommendation['status']): string {
+    return status === 'sent' ? 'completed' : status;
+  }
 
   getStatusClass(status: string): string {
     switch (status) {

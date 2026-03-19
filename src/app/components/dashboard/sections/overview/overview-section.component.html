@@ -8,11 +8,18 @@
         <div *ngIf="recommendationRequests.length === 0" class="empty-state">
           No recommendation requests for you yet.
         </div>
-        <div *ngFor="let req of recommendationRequests" class="request-item">
+        <div
+          *ngFor="let req of recommendationRequests"
+          class="request-item recommendation-clickable"
+          tabindex="0"
+          role="button"
+          (click)="onRecommendationClick(req)"
+          (keydown.enter)="onRecommendationClick(req)"
+          (keydown.space)="onRecommendationClick(req)">
           <p>From: <strong>{{ req.recommendedMemberName }}</strong></p>
           <p class="text-muted">{{ req.remarks }}</p>
           <p class="timestamp">{{ req.createdAt | date:'short' }}</p>
-          <span [class]="'status ' + getStatusClass(req.status)">{{ req.status }}</span>
+          <span [class]="'status ' + getStatusClass(req.status)">{{ getRecommendationStatusLabel(req.status) }}</span>
         </div>
       </div>
     </section>
@@ -39,10 +46,10 @@
         </div>
         <div *ngFor="let ref of referrals" class="request-item">
           <p>Referral: <strong>{{ ref.referrerName }}</strong></p>
+          <p class="text-muted">Contact: {{ ref.referrerContact }}</p>
           <p class="text-muted">Type: {{ ref.referralType === 'inside' ? 'Inside' : 'Outside' }}</p>
           <p class="text-muted">{{ ref.remarks }}</p>
           <p class="timestamp">{{ ref.createdAt | date:'short' }}</p>
-          <span [class]="'status ' + getStatusClass(ref.status)">{{ ref.status }}</span>
         </div>
       </div>
     </section>

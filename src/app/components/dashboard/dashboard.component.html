@@ -53,7 +53,8 @@
         [recommendationRequests]="recommendationRequests"
         [meetingRequests]="meetingRequests"
         [referrals]="referrals"
-        [doneBusinesses]="doneBusinesses">
+        [doneBusinesses]="doneBusinesses"
+        (recommendationSelected)="onRecommendationCardClick($event)">
       </app-overview-section>
 
       <app-profile-section
@@ -105,5 +106,41 @@
         (cancel)="setActiveTab('overview')">
       </app-meeting-section>
     </main>
+  </div>
+
+  <div class="recommendation-popup-backdrop" *ngIf="showRecommendationPopup()" (click)="closeRecommendationPopup()"></div>
+
+  <div class="recommendation-popup" *ngIf="showRecommendationPopup()" role="dialog" aria-modal="true" aria-label="Recommendation Response">
+    <div class="popup-header">
+      <h3>Respond To Recommendation</h3>
+      <button type="button" class="popup-close" (click)="closeRecommendationPopup()" aria-label="Close recommendation response">x</button>
+    </div>
+
+    <p class="popup-subtitle" *ngIf="selectedRecommendationRequest">
+      Request from <strong>{{ selectedRecommendationRequest.recommendedMemberName }}</strong>
+    </p>
+
+    <form [formGroup]="recommendationResponseForm" (ngSubmit)="submitRecommendationResponse()" class="popup-form">
+      <div class="form-group">
+        <label for="responseContactInfo">Contact Info <span class="required">*</span></label>
+        <input id="responseContactInfo" type="text" formControlName="contactInfo" class="form-control" placeholder="Enter contact details" />
+        <div class="error-message" *ngIf="recommendationResponseForm.get('contactInfo')?.touched && recommendationResponseForm.get('contactInfo')?.hasError('required')">
+          Contact info is required
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="responseReferralField">Referral Field <span class="required">*</span></label>
+        <textarea id="responseReferralField" formControlName="referralField" class="form-control" rows="4" placeholder="Enter referral details"></textarea>
+        <div class="error-message" *ngIf="recommendationResponseForm.get('referralField')?.touched && recommendationResponseForm.get('referralField')?.hasError('required')">
+          Referral field is required
+        </div>
+      </div>
+
+      <div class="popup-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="loading()">{{ loading() ? 'Submitting...' : 'Submit' }}</button>
+        <button type="button" class="btn btn-secondary" (click)="closeRecommendationPopup()">Cancel</button>
+      </div>
+    </form>
   </div>
 </div>

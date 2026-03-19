@@ -26,6 +26,12 @@ const DB_CONFIG = {
 
 const pool = mysql.createPool(DB_CONFIG);
 
+function releaseConnection(connection) {
+  if (connection) {
+    connection.release();
+  }
+}
+
 async function ensureEkdaColumn() {
   const connection = await pool.getConnection();
   try {
@@ -34,6 +40,100 @@ async function ensureEkdaColumn() {
       await connection.execute('ALTER TABLE users ADD COLUMN ekda_type VARCHAR(50) NULL AFTER state');
       console.log('✅ Added missing users.ekda_type column');
     }
+  } finally {
+    connection.release();
+  }
+}
+
+async function ensureRecommendationRequestsTable() {
+  const connection = await pool.getConnection();
+  try {
+    await connection.execute(
+      `CREATE TABLE IF NOT EXISTS recommendation_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        requester_id INT NOT NULL,
+        recipient_id INT NOT NULL,
+        remarks LONGTEXT NOT NULL,
+        status ENUM('pending', 'sent') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_requester_id (requester_id),
+        INDEX idx_recipient_id (recipient_id),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
+  } finally {
+    connection.release();
+  }
+}
+
+async function ensureRecommendationResponseColumns() {
+  const connection = await pool.getConnection();
+  try {
+    const [contactColumns] = await connection.execute("SHOW COLUMNS FROM recommendation_requests LIKE 'contact_info'");
+    if (contactColumns.length === 0) {
+      await connection.execute('ALTER TABLE recommendation_requests ADD COLUMN contact_info VARCHAR(255) NULL AFTER remarks');
+    }
+
+    const [referralColumns] = await connection.execute("SHOW COLUMNS FROM recommendation_requests LIKE 'referral_details'");
+    if (referralColumns.length === 0) {
+      await connection.execute('ALTER TABLE recommendation_requests ADD COLUMN referral_details LONGTEXT NULL AFTER contact_info');
+    }
+
+    const [respondedAtColumns] = await connection.execute("SHOW COLUMNS FROM recommendation_requests LIKE 'responded_at'");
+    if (respondedAtColumns.length === 0) {
+      await connection.execute('ALTER TABLE recommendation_requests ADD COLUMN responded_at TIMESTAMP NULL AFTER updated_at');
+    }
+  } finally {
+    connection.release();
+  }
+}
+
+async function ensureReferralsTable() {
+  const connection = await pool.getConnection();
+  try {
+    await connection.execute(
+      `CREATE TABLE IF NOT EXISTS referrals (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        sender_id INT NOT NULL,
+        recipient_id INT NOT NULL,
+        referrer_name VARCHAR(255) NOT NULL,
+        referrer_contact VARCHAR(255) NOT NULL,
+        referral_type ENUM('inside', 'outside') DEFAULT 'inside',
+        remarks LONGTEXT,
+        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_sender_id (sender_id),
+        INDEX idx_recipient_id (recipient_id),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
+  } finally {
+    connection.release();
+  }
+}
+
+async function ensureDoneBusinessTable() {
+  const connection = await pool.getConnection();
+  try {
+    await connection.execute(
+      `CREATE TABLE IF NOT EXISTS done_business (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        member_name VARCHAR(255) NOT NULL,
+        amount_closed DECIMAL(12,2) NOT NULL,
+        remarks LONGTEXT,
+        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_member_name (member_name),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+    );
   } finally {
     connection.release();
   }
@@ -569,6 +669,394 @@ app.get('/api/auth/users', async (req, res) => {
   }
 });
 
+// Create recommendation request for a selected recipient
+app.post('/api/recommendations', async (req, res) => {
+  const { requesterId, recipientId, remarks } = req.body;
+
+  if (!Number.isInteger(requesterId) || requesterId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid requesterId is required' });
+  }
+
+  if (!Number.isInteger(recipientId) || recipientId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid recipientId is required' });
+  }
+
+  if (requesterId === recipientId) {
+    return res.status(400).json({ success: false, message: 'Requester and recipient cannot be same user' });
+  }
+
+  if (typeof remarks !== 'string' || !remarks.trim()) {
+    return res.status(400).json({ success: false, message: 'Remarks are required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [users] = await connection.execute(
+      'SELECT id, name, email FROM users WHERE id IN (?, ?)',
+      [requesterId, recipientId]
+    );
+
+    if (users.length !== 2) {
+      return res.status(400).json({ success: false, message: 'Invalid requester or recipient' });
+    }
+
+    const requester = users.find((user) => user.id === requesterId);
+
+    const [result] = await connection.execute(
+      `INSERT INTO recommendation_requests (requester_id, recipient_id, remarks, status, created_at)
+       VALUES (?, ?, ?, 'pending', NOW())`,
+      [requesterId, recipientId, remarks.trim()]
+    );
+
+    res.status(201).json({
+      id: String(result.insertId),
+      recommendedMemberName: requester ? requester.name : '',
+      recommendedMemberEmail: requester ? requester.email : '',
+      remarks: remarks.trim(),
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    });
+  } catch (error) {
+    console.error('Recommendation creation error:', error);
+    res.status(500).json({ success: false, message: 'Server error while creating recommendation request' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Get recommendation requests received by a specific user
+app.get('/api/recommendations', async (req, res) => {
+  const userId = Number.parseInt(req.query.userId, 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid userId is required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    const [rows] = await connection.execute(
+      `SELECT
+        rr.id,
+        rr.remarks,
+        rr.contact_info AS contactInfo,
+        rr.referral_details AS referralDetails,
+        rr.responded_at AS respondedAt,
+        rr.status,
+        rr.created_at AS createdAt,
+        requester.name AS requesterName,
+        requester.email AS requesterEmail
+       FROM recommendation_requests rr
+       INNER JOIN users requester ON requester.id = rr.requester_id
+       WHERE rr.recipient_id = ?
+       ORDER BY rr.created_at DESC`,
+      [userId]
+    );
+
+    const payload = rows.map((row) => ({
+      id: String(row.id),
+      recommendedMemberName: row.requesterName,
+      recommendedMemberEmail: row.requesterEmail,
+      remarks: row.remarks,
+      contactInfo: row.contactInfo,
+      referralDetails: row.referralDetails,
+      respondedAt: row.respondedAt,
+      createdAt: row.createdAt,
+      status: row.status
+    }));
+
+    res.status(200).json(payload);
+  } catch (error) {
+    console.error('Recommendations fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching recommendations' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Respond to a recommendation request as recipient
+app.put('/api/recommendations/:id/respond', async (req, res) => {
+  const recommendationId = Number.parseInt(req.params.id, 10);
+  const { recipientUserId, contactInfo, referralDetails } = req.body;
+
+  if (!Number.isInteger(recommendationId) || recommendationId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid recommendation id is required' });
+  }
+
+  if (!Number.isInteger(recipientUserId) || recipientUserId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid recipientUserId is required' });
+  }
+
+  if (typeof contactInfo !== 'string' || !contactInfo.trim()) {
+    return res.status(400).json({ success: false, message: 'Contact info is required' });
+  }
+
+  if (typeof referralDetails !== 'string' || !referralDetails.trim()) {
+    return res.status(400).json({ success: false, message: 'Referral details are required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [recipientRows] = await connection.execute(
+      'SELECT id, name FROM users WHERE id = ?',
+      [recipientUserId]
+    );
+
+    if (recipientRows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Recipient user not found' });
+    }
+
+    const [rows] = await connection.execute(
+      'SELECT id, requester_id AS requesterId FROM recommendation_requests WHERE id = ? AND recipient_id = ?',
+      [recommendationId, recipientUserId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Recommendation request not found for this user' });
+    }
+
+    const recommendation = rows[0];
+
+    await connection.execute(
+      `UPDATE recommendation_requests
+          SET contact_info = ?,
+              referral_details = ?,
+              status = 'sent',
+              responded_at = NOW(),
+              updated_at = NOW()
+        WHERE id = ? AND recipient_id = ?`,
+      [contactInfo.trim(), referralDetails.trim(), recommendationId, recipientUserId]
+    );
+
+    await connection.execute(
+      `INSERT INTO referrals (sender_id, recipient_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
+       VALUES (?, ?, ?, ?, 'inside', ?, 'pending', NOW())`,
+      [
+        recipientUserId,
+        recommendation.requesterId,
+        recipientRows[0].name,
+        contactInfo.trim(),
+        referralDetails.trim()
+      ]
+    );
+
+    res.status(200).json({ success: true, message: 'Recommendation response submitted successfully' });
+  } catch (error) {
+    console.error('Recommendation response error:', error);
+    res.status(500).json({ success: false, message: 'Server error while responding to recommendation' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Create referral for a selected recipient
+app.post('/api/referrals', async (req, res) => {
+  const {
+    senderId,
+    recipientId,
+    referrerName,
+    referrerContact,
+    referralType,
+    remarks
+  } = req.body;
+
+  if (!Number.isInteger(senderId) || senderId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid senderId is required' });
+  }
+
+  if (!Number.isInteger(recipientId) || recipientId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid recipientId is required' });
+  }
+
+  if (senderId === recipientId) {
+    return res.status(400).json({ success: false, message: 'Sender and recipient cannot be the same user' });
+  }
+
+  if (typeof referrerName !== 'string' || !referrerName.trim()) {
+    return res.status(400).json({ success: false, message: 'Referral name is required' });
+  }
+
+  if (typeof referrerContact !== 'string' || !referrerContact.trim()) {
+    return res.status(400).json({ success: false, message: 'Referral contact is required' });
+  }
+
+  const safeType = referralType === 'outside' ? 'outside' : 'inside';
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [users] = await connection.execute(
+      'SELECT id FROM users WHERE id IN (?, ?)',
+      [senderId, recipientId]
+    );
+
+    if (users.length !== 2) {
+      return res.status(400).json({ success: false, message: 'Invalid sender or recipient' });
+    }
+
+    const [result] = await connection.execute(
+      `INSERT INTO referrals (sender_id, recipient_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())`,
+      [
+        senderId,
+        recipientId,
+        referrerName.trim(),
+        referrerContact.trim(),
+        safeType,
+        typeof remarks === 'string' ? remarks.trim() : null
+      ]
+    );
+
+    res.status(201).json({
+      id: String(result.insertId),
+      referrerName: referrerName.trim(),
+      referrerContact: referrerContact.trim(),
+      referralType: safeType,
+      remarks: typeof remarks === 'string' ? remarks.trim() : '',
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    });
+  } catch (error) {
+    console.error('Referral creation error:', error);
+    res.status(500).json({ success: false, message: 'Server error while creating referral' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Get referrals received by a specific user
+app.get('/api/referrals', async (req, res) => {
+  const userId = Number.parseInt(req.query.userId, 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid userId is required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    const [rows] = await connection.execute(
+      `SELECT
+        id,
+        referrer_name AS referrerName,
+        referrer_contact AS referrerContact,
+        referral_type AS referralType,
+        remarks,
+        created_at AS createdAt,
+        status
+       FROM referrals
+       WHERE recipient_id = ?
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    const payload = rows.map((row) => ({
+      id: String(row.id),
+      referrerName: row.referrerName,
+      referrerContact: row.referrerContact,
+      referralType: row.referralType,
+      remarks: row.remarks || '',
+      createdAt: row.createdAt,
+      status: row.status
+    }));
+
+    res.status(200).json(payload);
+  } catch (error) {
+    console.error('Referrals fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching referrals' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Create done business record
+app.post('/api/done-business', async (req, res) => {
+  const { memberName, amountClosed, remarks, remark } = req.body;
+  const parsedAmount = Number.parseFloat(amountClosed);
+  const safeRemarks = typeof remarks === 'string'
+    ? remarks.trim()
+    : (typeof remark === 'string' ? remark.trim() : '');
+
+  if (typeof memberName !== 'string' || !memberName.trim()) {
+    return res.status(400).json({ success: false, message: 'Member name is required' });
+  }
+
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    return res.status(400).json({ success: false, message: 'Amount closed must be greater than 0' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    const [result] = await connection.execute(
+      `INSERT INTO done_business (member_name, amount_closed, remarks, status, created_at)
+       VALUES (?, ?, ?, 'pending', NOW())`,
+      [memberName.trim(), parsedAmount, safeRemarks || null]
+    );
+
+    res.status(201).json({
+      id: String(result.insertId),
+      memberName: memberName.trim(),
+      amountClosed: parsedAmount,
+      remarks: safeRemarks,
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    });
+  } catch (error) {
+    console.error('Done business creation error:', error);
+    res.status(500).json({ success: false, message: 'Server error while creating done business' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Get done business records
+app.get('/api/done-business', async (req, res) => {
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    const [rows] = await connection.execute(
+      `SELECT
+        id,
+        member_name AS memberName,
+        amount_closed AS amountClosed,
+        remarks,
+        status,
+        created_at AS createdAt
+       FROM done_business
+       ORDER BY created_at DESC`
+    );
+
+    const payload = rows.map((row) => ({
+      id: String(row.id),
+      memberName: row.memberName,
+      amountClosed: Number(row.amountClosed),
+      remarks: row.remarks || '',
+      createdAt: row.createdAt,
+      status: row.status
+    }));
+
+    res.status(200).json(payload);
+  } catch (error) {
+    console.error('Done business fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching done business' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
 // Create meeting requests for one or more recipients
 app.post('/api/meeting-requests', async (req, res) => {
   const {
@@ -719,6 +1207,10 @@ const PORT = 3000;
 async function startServer() {
   try {
     await ensureEkdaColumn();
+    await ensureRecommendationRequestsTable();
+    await ensureRecommendationResponseColumns();
+    await ensureReferralsTable();
+    await ensureDoneBusinessTable();
   } catch (error) {
     console.error('❌ Schema check failed:', error.message);
     process.exit(1);

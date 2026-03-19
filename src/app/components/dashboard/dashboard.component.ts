@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { Observable, take } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { DashboardService } from '../../services/dashboard.service';
-import { MemberProfile, Referral, DoneBusiness, Recommendation, MeetingRequest, DashboardData, MeetingRequestPayload } from '../../models/dashboard.model';
+import { MemberProfile, Referral, DoneBusiness, Recommendation, MeetingRequest, DashboardData, MeetingRequestPayload, RecommendationRequestPayload, RecommendationResponsePayload, ReferralCreatePayload } from '../../models/dashboard.model';
 import { User, UserLookup } from '../../models/user.model';
 import { OverviewSectionComponent } from './sections/overview/overview-section.component';
 import { ProfileSectionComponent } from './sections/profile/profile-section.component';
@@ -61,6 +61,7 @@ export class DashboardComponent implements OnInit {
   referralForm!: FormGroup;
   businessForm!: FormGroup;
   recommendationForm!: FormGroup;
+  recommendationResponseForm!: FormGroup;
   meetingForm!: FormGroup;
 
   loading = signal(false);
@@ -73,6 +74,8 @@ export class DashboardComponent implements OnInit {
   doneBusinesses: DoneBusiness[] = [];
   registeredMembers: UserLookup[] = [];
   selectedMeetingMembers: UserLookup[] = [];
+  selectedRecommendationRequest: Recommendation | null = null;
+  showRecommendationPopup = signal(false);
 
   constructor(
     private authService: AuthService,
@@ -90,6 +93,8 @@ export class DashboardComponent implements OnInit {
     this.loadMemberProfile();
     this.loadRegisteredMembers();
     this.loadMeetingRequestsForCurrentUser();
+    this.loadRecommendationsForCurrentUser();
+    this.loadReferralsForCurrentUser();
   }
 
   private loadRegisteredMembers(): void {
@@ -141,12 +146,17 @@ export class DashboardComponent implements OnInit {
     this.businessForm = this.fb.group({
       memberName: ['', [Validators.required]],
       amountClosed: ['', [Validators.required, Validators.min(0)]],
-      remark: ['']
+      remarks: ['', [Validators.required]]
     });
 
     this.recommendationForm = this.fb.group({
       memberSearch: ['', [Validators.required]],
-      remarks: ['']
+      remarks: ['', [Validators.required]]
+    });
+
+    this.recommendationResponseForm = this.fb.group({
+      contactInfo: ['', [Validators.required]],
+      referralField: ['', [Validators.required]]
     });
 
     this.meetingForm = this.fb.group({
@@ -175,14 +185,50 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  private loadRecommendationsForCurrentUser(): void {
+    const currentUserId = this.authService.currentUser$.value?.id;
+
+    if (!currentUserId) {
+      return;
+    }
+
+    this.dashboardService.getRecommendations(currentUserId).subscribe({
+      next: (requests) => {
+        this.recommendationRequests = requests;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error loading recommendation requests:', err);
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private loadReferralsForCurrentUser(): void {
+    const currentUserId = this.authService.currentUser$.value?.id;
+
+    if (!currentUserId) {
+      return;
+    }
+
+    this.dashboardService.getReferrals(currentUserId).subscribe({
+      next: (items) => {
+        this.referrals = items;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error loading referrals:', err);
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   private loadDashboardData(): void {
     this.loading.set(true);
     this.cdr.markForCheck();
     this.dashboardService.getDashboardData().subscribe({
       next: (data) => {
         this.dashboardData = data;
-        this.recommendationRequests = data.recommendationRequests;
-        this.referrals = data.referrals;
         this.doneBusinesses = data.doneBusiness;
         this.loading.set(false);
         this.cdr.markForCheck();
@@ -343,16 +389,39 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
+    const currentUser = this.authService.currentUser$.value;
+
+    if (!currentUser?.id) {
+      this.errorMessage.set('Unable to identify logged in user. Please log in again.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const recipientId = Number(this.referralForm.value.memberSearch);
+
+    if (!Number.isInteger(recipientId) || recipientId <= 0) {
+      this.errorMessage.set('Please select a valid member from search list.');
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.loading.set(true);
     this.cdr.markForCheck();
-    const { memberSearch, ...referralData } = this.referralForm.value;
+    const referralData: ReferralCreatePayload = {
+      senderId: currentUser.id,
+      recipientId,
+      referrerName: (this.referralForm.value.referrerName || '').trim(),
+      referrerContact: (this.referralForm.value.referrerContact || '').trim(),
+      referralType: this.referralForm.value.referralType === 'outside' ? 'outside' : 'inside',
+      remarks: (this.referralForm.value.remarks || '').trim()
+    };
     
     this.dashboardService.submitReferral(referralData).subscribe({
       next: (referral) => {
-        this.referrals.unshift(referral);
         this.referralForm.reset({ referralType: 'inside' });
         this.loading.set(false);
         this.successMessage.set('Referral submitted successfully!');
+        this.loadReferralsForCurrentUser();
         this.cdr.markForCheck();
         setTimeout(() => this.clearMessages(), 3000);
       },
@@ -372,7 +441,11 @@ export class DashboardComponent implements OnInit {
 
     this.loading.set(true);
     this.cdr.markForCheck();
-    const { memberName, ...businessData } = this.businessForm.value;
+    const businessData = {
+      memberName: (this.businessForm.value.memberName || '').trim(),
+      amountClosed: Number(this.businessForm.value.amountClosed),
+      remarks: (this.businessForm.value.remarks || '').trim()
+    };
     
     this.dashboardService.submitDoneBusiness(businessData).subscribe({
       next: (business) => {
@@ -397,22 +470,102 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
+    const currentUser = this.authService.currentUser$.value;
+
+    if (!currentUser?.id) {
+      this.errorMessage.set('Unable to identify logged in user. Please log in again.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const recipientId = Number(this.recommendationForm.value.memberSearch);
+
+    if (!Number.isInteger(recipientId) || recipientId <= 0) {
+      this.errorMessage.set('Please select a valid member.');
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.loading.set(true);
     this.cdr.markForCheck();
-    const { memberSearch, ...recommendationData } = this.recommendationForm.value;
+    const recommendationData: RecommendationRequestPayload = {
+      requesterId: currentUser.id,
+      recipientId,
+      remarks: (this.recommendationForm.value.remarks || '').trim()
+    };
     
     this.dashboardService.submitRecommendation(recommendationData).subscribe({
-      next: (recommendation) => {
-        this.recommendationRequests.unshift(recommendation);
+      next: () => {
         this.recommendationForm.reset();
         this.loading.set(false);
         this.successMessage.set('Recommendation sent successfully!');
+        this.loadRecommendationsForCurrentUser();
         this.cdr.markForCheck();
         setTimeout(() => this.clearMessages(), 3000);
       },
       error: (err) => {
         this.loading.set(false);
         this.errorMessage.set('Error sending recommendation. Please try again.');
+        this.cdr.markForCheck();
+        console.error('Error:', err);
+      }
+    });
+  }
+
+  onRecommendationCardClick(request: Recommendation): void {
+    this.selectedRecommendationRequest = request;
+    this.recommendationResponseForm.reset({
+      contactInfo: request.contactInfo || '',
+      referralField: request.referralDetails || ''
+    });
+    this.clearMessages();
+    this.showRecommendationPopup.set(true);
+    this.cdr.markForCheck();
+  }
+
+  closeRecommendationPopup(): void {
+    this.showRecommendationPopup.set(false);
+    this.selectedRecommendationRequest = null;
+    this.recommendationResponseForm.reset();
+    this.cdr.markForCheck();
+  }
+
+  submitRecommendationResponse(): void {
+    if (!this.selectedRecommendationRequest) {
+      return;
+    }
+
+    if (this.handleInvalidForm(this.recommendationResponseForm, 'Please complete contact info and referral field.')) {
+      return;
+    }
+
+    const currentUser = this.authService.currentUser$.value;
+    if (!currentUser?.id) {
+      this.errorMessage.set('Unable to identify logged in user. Please log in again.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const payload: RecommendationResponsePayload = {
+      recipientUserId: currentUser.id,
+      contactInfo: (this.recommendationResponseForm.value.contactInfo || '').trim(),
+      referralDetails: (this.recommendationResponseForm.value.referralField || '').trim()
+    };
+
+    this.loading.set(true);
+    this.cdr.markForCheck();
+    this.dashboardService.respondToRecommendation(this.selectedRecommendationRequest.id, payload).subscribe({
+      next: (response) => {
+        this.loading.set(false);
+        this.successMessage.set(response.message || 'Recommendation response submitted successfully!');
+        this.closeRecommendationPopup();
+        this.loadRecommendationsForCurrentUser();
+        this.cdr.markForCheck();
+        setTimeout(() => this.clearMessages(), 3000);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.errorMessage.set('Error submitting recommendation response. Please try again.');
         this.cdr.markForCheck();
         console.error('Error:', err);
       }

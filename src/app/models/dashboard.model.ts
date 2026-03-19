@@ -8,6 +8,15 @@ export interface Referral {
   status: 'pending' | 'approved' | 'rejected';
 }
 
+export interface ReferralCreatePayload {
+  senderId: number;
+  recipientId: number;
+  referrerName: string;
+  referrerContact: string;
+  referralType: 'inside' | 'outside';
+  remarks: string;
+}
+
 export interface DoneBusiness {
   id: string;
   memberName: string;
@@ -22,8 +31,23 @@ export interface Recommendation {
   recommendedMemberName: string;
   recommendedMemberEmail: string;
   remarks: string;
+  contactInfo?: string | null;
+  referralDetails?: string | null;
+  respondedAt?: string | null;
   createdAt: Date;
   status: 'pending' | 'sent';
+}
+
+export interface RecommendationRequestPayload {
+  requesterId: number;
+  recipientId: number;
+  remarks: string;
+}
+
+export interface RecommendationResponsePayload {
+  recipientUserId: number;
+  contactInfo: string;
+  referralDetails: string;
 }
 
 export interface MeetingRequest {

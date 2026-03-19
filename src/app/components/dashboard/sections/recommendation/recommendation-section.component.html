@@ -6,7 +6,7 @@
         <label for="memberSearchRec">Search Individual Member <span class="required">*</span></label>
         <select id="memberSearchRec" formControlName="memberSearch" class="form-control">
           <option value="">Select member</option>
-          <option *ngFor="let member of memberOptions" [value]="member.name">{{ member.name }}</option>
+          <option *ngFor="let member of memberOptions" [value]="member.id">{{ member.name }}</option>
         </select>
         <div class="error-message" *ngIf="recommendationForm.get('memberSearch')?.touched && recommendationForm.get('memberSearch')?.hasError('required')">
           Please select a member to request recommendation from
@@ -16,6 +16,9 @@
       <div class="form-group">
         <label for="recRemark">Remark <span class="required">*</span></label>
         <textarea id="recRemark" formControlName="remarks" class="form-control" placeholder="Add recommendation request remark" rows="4"></textarea>
+        <div class="error-message" *ngIf="recommendationForm.get('remarks')?.touched && recommendationForm.get('remarks')?.hasError('required')">
+          Please add a remark
+        </div>
       </div>
     </div>
 

@@ -56,3 +56,54 @@ CREATE TABLE IF NOT EXISTS meeting_requests (
   INDEX idx_preferred_date (preferred_date),
   INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Referrals Table
+CREATE TABLE IF NOT EXISTS referrals (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  sender_id INT NOT NULL,
+  recipient_id INT NOT NULL,
+  referrer_name VARCHAR(255) NOT NULL,
+  referrer_contact VARCHAR(255) NOT NULL,
+  referral_type ENUM('inside', 'outside') DEFAULT 'inside',
+  remarks LONGTEXT,
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_sender_id (sender_id),
+  INDEX idx_recipient_id (recipient_id),
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Recommendation Requests Table
+CREATE TABLE IF NOT EXISTS recommendation_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  requester_id INT NOT NULL,
+  recipient_id INT NOT NULL,
+  remarks LONGTEXT NOT NULL,
+  contact_info VARCHAR(255),
+  referral_details LONGTEXT,
+  status ENUM('pending', 'sent') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  responded_at TIMESTAMP NULL,
+  FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_requester_id (requester_id),
+  INDEX idx_recipient_id (recipient_id),
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Done Business Table
+CREATE TABLE IF NOT EXISTS done_business (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  member_name VARCHAR(255) NOT NULL,
+  amount_closed DECIMAL(12,2) NOT NULL,
+  remarks LONGTEXT,
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_member_name (member_name),
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
