@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS recommendation_requests (
 CREATE TABLE IF NOT EXISTS done_business (
   id INT AUTO_INCREMENT PRIMARY KEY,
   member_name VARCHAR(255) NOT NULL,
-  amount_closed DECIMAL(12,2) NOT NULL,
+  amount_closed DECIMAL(15,2) NOT NULL,
   remarks LONGTEXT,
   status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

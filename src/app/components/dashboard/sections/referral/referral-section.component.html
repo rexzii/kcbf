@@ -37,7 +37,7 @@
 
       <div class="form-group">
         <label for="refContact">Referral Contact Number <span class="required">*</span></label>
-        <input type="text" id="refContact" formControlName="referrerContact" class="form-control" placeholder="10-digit number">
+        <input type="text" id="refContact" formControlName="referrerContact" class="form-control" placeholder="10-digit number" maxlength="10" inputmode="numeric">
         <div class="error-message" *ngIf="referralForm.get('referrerContact')?.touched && referralForm.get('referrerContact')?.hasError('pattern')">
           Please enter a valid 10-digit number
         </div>
