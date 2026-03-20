@@ -160,6 +160,42 @@ app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 
 // Routes
 
+// Dashboard summary endpoint
+app.get('/api/dashboard', async (req, res) => {
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [doneBusiness] = await connection.execute(
+      `SELECT
+        id,
+        member_name   AS memberName,
+        amount_closed AS amountClosed,
+        remarks,
+        status,
+        created_at    AS createdAt
+       FROM done_business
+       ORDER BY created_at DESC`
+    );
+
+    res.status(200).json({
+      doneBusiness: doneBusiness.map((row) => ({
+        id: String(row.id),
+        memberName: row.memberName,
+        amountClosed: Number(row.amountClosed),
+        remarks: row.remarks || '',
+        createdAt: row.createdAt,
+        status: row.status
+      }))
+    });
+  } catch (error) {
+    console.error('Dashboard fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching dashboard data' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
 // Register endpoint
 app.post('/api/auth/register', async (req, res) => {
   const {
@@ -842,17 +878,16 @@ app.put('/api/recommendations/:id/respond', async (req, res) => {
       [contactInfo.trim(), referralDetails.trim(), recommendationId, recipientUserId]
     );
 
-    await connection.execute(
-      `INSERT INTO referrals (sender_id, recipient_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
-       VALUES (?, ?, ?, ?, 'inside', ?, 'pending', NOW())`,
-      [
-        recipientUserId,
-        recommendation.requesterId,
-        recipientRows[0].name,
-        contactInfo.trim(),
-        referralDetails.trim()
-      ]
-    );
+   await connection.execute(
+  `INSERT INTO referrals (user_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
+   VALUES (?, ?, ?, 'inside', ?, 'pending', NOW())`,
+  [
+    recommendation.requesterId,  // user_id = who receives this referral
+    recipientRows[0].name,        // referrer_name = who is giving it
+    contactInfo.trim(),           // referrer_contact
+    referralDetails.trim()        // remarks
+  ]
+);
 
     res.status(200).json({ success: true, message: 'Recommendation response submitted successfully' });
   } catch (error) {
@@ -911,17 +946,16 @@ app.post('/api/referrals', async (req, res) => {
     }
 
     const [result] = await connection.execute(
-      `INSERT INTO referrals (sender_id, recipient_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())`,
-      [
-        senderId,
-        recipientId,
-        referrerName.trim(),
-        referrerContact.trim(),
-        safeType,
-        typeof remarks === 'string' ? remarks.trim() : null
-      ]
-    );
+  `INSERT INTO referrals (user_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
+   VALUES (?, ?, ?, ?, ?, 'pending', NOW())`,
+  [
+    recipientId,             
+    referrerName.trim(),
+    referrerContact.trim(),
+    safeType,
+    typeof remarks === 'string' ? remarks.trim() : null
+  ]
+);
 
     res.status(201).json({
       id: String(result.insertId),
@@ -962,7 +996,7 @@ app.get('/api/referrals', async (req, res) => {
         created_at AS createdAt,
         status
        FROM referrals
-       WHERE recipient_id = ?
+       WHERE user_id = ?
        ORDER BY created_at DESC`,
       [userId]
     );
@@ -988,29 +1022,33 @@ app.get('/api/referrals', async (req, res) => {
 
 // Create done business record
 app.post('/api/done-business', async (req, res) => {
-  const { memberName, amountClosed, remarks, remark } = req.body;
-  const parsedAmount = Number.parseFloat(amountClosed);
-  const safeRemarks = typeof remarks === 'string'
-    ? remarks.trim()
-    : (typeof remark === 'string' ? remark.trim() : '');
+ const { userId, memberName, amountClosed, remarks, remark } = req.body;
+const parsedAmount = Number.parseFloat(amountClosed);
+const safeRemarks = typeof remarks === 'string'
+  ? remarks.trim()
+  : (typeof remark === 'string' ? remark.trim() : '');
 
-  if (typeof memberName !== 'string' || !memberName.trim()) {
-    return res.status(400).json({ success: false, message: 'Member name is required' });
-  }
+if (!Number.isInteger(userId) || userId <= 0) {
+  return res.status(400).json({ success: false, message: 'Valid userId is required' });
+}
 
-  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-    return res.status(400).json({ success: false, message: 'Amount closed must be greater than 0' });
-  }
+if (typeof memberName !== 'string' || !memberName.trim()) {
+  return res.status(400).json({ success: false, message: 'Member name is required' });
+}
+
+if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+  return res.status(400).json({ success: false, message: 'Amount closed must be greater than 0' });
+}
 
   let connection;
 
   try {
     connection = await pool.getConnection();
     const [result] = await connection.execute(
-      `INSERT INTO done_business (member_name, amount_closed, remarks, status, created_at)
-       VALUES (?, ?, ?, 'pending', NOW())`,
-      [memberName.trim(), parsedAmount, safeRemarks || null]
-    );
+  `INSERT INTO done_business (user_id, member_name, amount_closed, remarks, status, created_at)
+   VALUES (?, ?, ?, ?, 'pending', NOW())`,  
+  [userId, memberName.trim(), parsedAmount, safeRemarks || null]
+);
 
     res.status(201).json({
       id: String(result.insertId),
@@ -1116,13 +1154,14 @@ app.post('/api/meeting-requests', async (req, res) => {
       return res.status(400).json({ success: false, message: 'One or more selected members are invalid' });
     }
 
-    for (const recipientId of uniqueRecipientIds) {
-      await connection.execute(
-        `INSERT INTO meeting_requests (requester_id, recipient_id, preferred_date, remarks, status, created_at)
-         VALUES (?, ?, ?, ?, 'pending', NOW())`,
-        [requesterId, recipientId, preferredDate, remarks || null]
-      );
-    }
+   for (const recipientId of uniqueRecipientIds) {
+  await connection.execute(
+    `INSERT INTO meeting_requests (requester_id, requester_name, requester_email, preferred_date, remarks, status, created_at)
+     VALUES (?, ?, ?, ?, ?, 'pending', NOW())`,
+    [requesterId, requesterName, requesterEmail, preferredDate, remarks || null]
+  );
+}
+
 
     await connection.commit();
 
@@ -1155,25 +1194,21 @@ app.get('/api/meeting-requests', async (req, res) => {
 
   try {
     connection = await pool.getConnection();
-    const [requests] = await connection.execute(
-      `SELECT
-        mr.id,
-        mr.requester_id AS requesterId,
-        mr.recipient_id AS recipientId,
-        recipient.name AS recipientName,
-        requester.name AS requesterName,
-        requester.email AS requesterEmail,
-        mr.preferred_date AS preferredDate,
-        mr.remarks,
-        mr.created_at AS createdAt,
-        mr.status
-       FROM meeting_requests mr
-       INNER JOIN users requester ON requester.id = mr.requester_id
-       INNER JOIN users recipient ON recipient.id = mr.recipient_id
-       WHERE mr.recipient_id = ?
-       ORDER BY mr.created_at DESC`,
-      [userId]
-    );
+   const [requests] = await connection.execute(
+  `SELECT
+    id,
+    requester_id    AS requesterId,
+    requester_name  AS requesterName,
+    requester_email AS requesterEmail,
+    preferred_date  AS preferredDate,
+    remarks,
+    created_at      AS createdAt,
+    status
+   FROM meeting_requests
+   WHERE requester_id = ?
+   ORDER BY created_at DESC`,
+  [userId]
+);
 
     res.status(200).json(requests);
   } catch (error) {

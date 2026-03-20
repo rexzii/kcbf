@@ -15,7 +15,6 @@ export class MeetingSectionComponent {
   @Input() memberOptions: UserLookup[] = [];
   @Input() selectedMembers: UserLookup[] = [];
   @Input() loading = false;
-
   @Output() submitForm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
   @Output() addMember = new EventEmitter<number>();
