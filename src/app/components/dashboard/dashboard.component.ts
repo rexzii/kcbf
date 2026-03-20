@@ -381,6 +381,7 @@ export class DashboardComponent implements OnInit {
     this.isProfileEditing.set(false);
     this.clearMessages();
     this.cdr.markForCheck();
+     this.setActiveTab('overview');
   }
 
   onReferralSubmit(): void {
