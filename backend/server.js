@@ -125,7 +125,7 @@ async function ensureDoneBusinessTable() {
       `CREATE TABLE IF NOT EXISTS done_business (
         id INT AUTO_INCREMENT PRIMARY KEY,
         member_name VARCHAR(255) NOT NULL,
-        amount_closed DECIMAL(12,2) NOT NULL,
+        amount_closed DECIMAL(15,2) NOT NULL,
         remarks LONGTEXT,
         status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -134,6 +134,13 @@ async function ensureDoneBusinessTable() {
         INDEX idx_created_at (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
     );
+
+    const [amountColumn] = await connection.execute("SHOW COLUMNS FROM done_business LIKE 'amount_closed'");
+    const amountColumnType = amountColumn[0]?.Type ? String(amountColumn[0].Type).toLowerCase() : '';
+
+    if (amountColumnType !== 'decimal(15,2)') {
+      await connection.execute('ALTER TABLE done_business MODIFY COLUMN amount_closed DECIMAL(15,2) NOT NULL');
+    }
   } finally {
     connection.release();
   }
