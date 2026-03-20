@@ -89,7 +89,6 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadDashboardData();
     this.loadMemberProfile();
     this.loadRegisteredMembers();
     this.loadMeetingRequestsForCurrentUser();
@@ -441,7 +440,16 @@ export class DashboardComponent implements OnInit {
 
     this.loading.set(true);
     this.cdr.markForCheck();
+    const currentUser = this.authService.currentUser$.value;
+
+if (!currentUser?.id) {
+  this.errorMessage.set('Unable to identify logged in user. Please log in again.');
+  this.loading.set(false);
+  this.cdr.markForCheck();
+  return;
+}
     const businessData = {
+      userId: currentUser.id,
       memberName: (this.businessForm.value.memberName || '').trim(),
       amountClosed: Number(this.businessForm.value.amountClosed),
       remarks: (this.businessForm.value.remarks || '').trim()
