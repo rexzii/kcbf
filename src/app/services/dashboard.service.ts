@@ -86,7 +86,7 @@ export class DashboardService {
 
   // Submit referral
   submitReferral(referral: ReferralCreatePayload): Observable<Referral> {
-    return this.http.post<Referral>(`${this.apiUrl}/referrals`, referral);
+    return this.http.post<Referral>(`${this.apiUrl}/referral`, referral);
   }
 
   // Get referrals

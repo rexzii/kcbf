@@ -899,7 +899,7 @@ app.put('/api/recommendations/:id/respond', async (req, res) => {
 });
 
 // Create referral for a selected recipient
-app.post('/api/referrals', async (req, res) => {
+app.post('/api/referral', async (req, res) => {
   const {
     senderId,
     recipientId,
