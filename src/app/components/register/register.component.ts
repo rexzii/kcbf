@@ -19,6 +19,8 @@ export class RegisterComponent implements OnInit {
   error = '';
   successMessage = '';
   showOptionalFields = signal(false);
+  showPassword = false;
+  showConfirmPassword = false;
 
   states = [
     'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -74,6 +76,16 @@ export class RegisterComponent implements OnInit {
 
   get f() {
     return this.registerForm.controls;
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+    this.cdr.markForCheck();
+  }
+
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
+    this.cdr.markForCheck();
   }
 
   onSubmit(): void {

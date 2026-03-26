@@ -14,6 +14,7 @@ export class OverviewSectionComponent {
   @Input() recommendationRequests: Recommendation[] = [];
   @Input() meetingRequests: MeetingRequest[] = [];
   @Input() referrals: Referral[] = [];
+  @Input() uploadedReferralCount = 0;
   @Input() doneBusinesses: DoneBusiness[] = [];
   @Output() recommendationSelected = new EventEmitter<Recommendation>();
 

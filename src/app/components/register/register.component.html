@@ -212,9 +212,21 @@
 
       <!-- Password -->
       <div class="form-group">
-        <label for="password">Password*</label>
+        <div class="password-label-wrapper">
+          <label for="password">Password*</label>
+          <button
+            type="button"
+            class="password-toggle-btn"
+            (click)="togglePasswordVisibility()"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+            tabindex="0"
+          >
+            <i *ngIf="!showPassword" class="fas fa-eye"></i>
+            <i *ngIf="showPassword" class="fas fa-eye-slash"></i>
+          </button>
+        </div>
         <input
-          type="password"
+          [type]="showPassword ? 'text' : 'password'"
           id="password"
           formControlName="password"
           class="form-input"
@@ -229,9 +241,21 @@
 
       <!-- Confirm Password -->
       <div class="form-group">
-        <label for="confirmPassword">Confirm Password*</label>
+        <div class="password-label-wrapper">
+          <label for="confirmPassword">Confirm Password*</label>
+          <button
+            type="button"
+            class="password-toggle-btn"
+            (click)="toggleConfirmPasswordVisibility()"
+            [attr.aria-label]="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
+            tabindex="0"
+          >
+            <i *ngIf="!showConfirmPassword" class="fas fa-eye"></i>
+            <i *ngIf="showConfirmPassword" class="fas fa-eye-slash"></i>
+          </button>
+        </div>
         <input
-          type="password"
+          [type]="showConfirmPassword ? 'text' : 'password'"
           id="confirmPassword"
           formControlName="confirmPassword"
           class="form-input"

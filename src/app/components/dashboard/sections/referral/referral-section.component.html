@@ -28,8 +28,23 @@
       </div>
 
       <div class="form-group">
-        <label for="refName">Referral Name <span class="required">*</span></label>
-        <input type="text" id="refName" formControlName="referrerName" class="form-control" placeholder="Referral full name">
+        <div class="referral-name-wrapper">
+          <div class="label-container">
+            <label for="refName">Referral Name <span class="required">*</span></label>
+            <button 
+              *ngIf="isMobile"
+              type="button" 
+              class="contact-picker-btn"
+              (click)="pickContact()"
+              [disabled]="loading"
+              aria-label="Pick contact from device"
+              title="Pick from contacts"
+            >
+              <i class="fas fa-address-book"></i>
+            </button>
+          </div>
+          <input type="text" id="refName" formControlName="referrerName" class="form-control" placeholder="Referral full name">
+        </div>
         <div class="error-message" *ngIf="referralForm.get('referrerName')?.touched && referralForm.get('referrerName')?.hasError('required')">
           Referral name is required
         </div>
@@ -56,4 +71,99 @@
       <button type="button" class="btn btn-secondary" (click)="cancel.emit()">Cancel</button>
     </div>
   </form>
+
+  <div class="referrals-table-shell">
+    <div class="table-header-row">
+      <h3>My Uploaded Referrals</h3>
+      <span class="table-count">{{ referrals.length }}</span>
+    </div>
+
+    <div class="table-empty" *ngIf="referrals.length === 0">
+      No referrals uploaded yet.
+    </div>
+
+    <div class="table-scroll" *ngIf="referrals.length > 0">
+      <table class="referrals-table">
+        <thead>
+          <tr>
+            <th>Referral Name</th>
+            <th>Contact</th>
+            <th>Type</th>
+            <th>Created</th>
+            <th class="actions-col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let referral of referrals">
+            <td>{{ referral.referrerName }}</td>
+            <td>{{ referral.referrerContact }}</td>
+            <td>{{ referral.referralType | titlecase }}</td>
+            <td>{{ referral.createdAt | date:'dd MMM yyyy, hh:mm a' }}</td>
+            <td class="actions-cell">
+              <button
+                type="button"
+                class="btn-icon btn-view"
+                [disabled]="loading"
+                (click)="onViewReferral(referral)"
+                aria-label="View referral details"
+                title="View referral details">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon btn-delete"
+                [disabled]="loading"
+                (click)="onDeleteReferral(referral.id)"
+                aria-label="Delete referral"
+                title="Delete referral">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div
+    class="referral-popup-backdrop"
+    *ngIf="selectedReferral"
+    (click)="closeReferralDetails()"></div>
+
+  <div
+    class="referral-popup-card"
+    *ngIf="selectedReferral"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Referral details">
+    <div class="popup-head">
+      <h3>Referral Details</h3>
+      <button type="button" class="popup-close" (click)="closeReferralDetails()" aria-label="Close details">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="popup-grid">
+      <div class="popup-item">
+        <span class="item-label">Referral Name</span>
+        <span class="item-value">{{ selectedReferral.referrerName }}</span>
+      </div>
+      <div class="popup-item">
+        <span class="item-label">Contact</span>
+        <span class="item-value">{{ selectedReferral.referrerContact }}</span>
+      </div>
+      <div class="popup-item">
+        <span class="item-label">Type</span>
+        <span class="item-value">{{ selectedReferral.referralType | titlecase }}</span>
+      </div>
+      <div class="popup-item">
+        <span class="item-label">Created</span>
+        <span class="item-value">{{ selectedReferral.createdAt | date:'dd MMM yyyy, hh:mm a' }}</span>
+      </div>
+      <div class="popup-item popup-item-full">
+        <span class="item-label">Remarks</span>
+        <span class="item-value">{{ selectedReferral.remarks || 'No remarks provided' }}</span>
+      </div>
+    </div>
+  </div>
 </div>

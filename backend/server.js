@@ -18,7 +18,7 @@ const app = express();
 const DB_CONFIG = {
   host: 'localhost',
   user: 'root',
-  password: '123456',
+  password: '',
   database: 'kcbf_db',
   port: 3306,
   dateStrings: true
@@ -878,16 +878,17 @@ app.put('/api/recommendations/:id/respond', async (req, res) => {
       [contactInfo.trim(), referralDetails.trim(), recommendationId, recipientUserId]
     );
 
-   await connection.execute(
-  `INSERT INTO referrals (user_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
-   VALUES (?, ?, ?, 'inside', ?, 'pending', NOW())`,
-  [
-    recommendation.requesterId,  // user_id = who receives this referral
-    recipientRows[0].name,        // referrer_name = who is giving it
-    contactInfo.trim(),           // referrer_contact
-    referralDetails.trim()        // remarks
-  ]
-);
+    await connection.execute(
+      `INSERT INTO referrals (sender_id, recipient_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
+       VALUES (?, ?, ?, ?, 'inside', ?, 'pending', NOW())`,
+      [
+        recipientUserId,
+        recommendation.requesterId,
+        recipientRows[0].name,
+        contactInfo.trim(),
+        referralDetails.trim()
+      ]
+    );
 
     res.status(200).json({ success: true, message: 'Recommendation response submitted successfully' });
   } catch (error) {
@@ -946,16 +947,17 @@ app.post('/api/referral', async (req, res) => {
     }
 
     const [result] = await connection.execute(
-  `INSERT INTO referrals (user_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
-   VALUES (?, ?, ?, ?, ?, 'pending', NOW())`,
-  [
-    recipientId,             
-    referrerName.trim(),
-    referrerContact.trim(),
-    safeType,
-    typeof remarks === 'string' ? remarks.trim() : null
-  ]
-);
+      `INSERT INTO referrals (sender_id, recipient_id, referrer_name, referrer_contact, referral_type, remarks, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())`,
+      [
+        senderId,
+        recipientId,
+        referrerName.trim(),
+        referrerContact.trim(),
+        safeType,
+        typeof remarks === 'string' ? remarks.trim() : null
+      ]
+    );
 
     res.status(201).json({
       id: String(result.insertId),
@@ -974,7 +976,7 @@ app.post('/api/referral', async (req, res) => {
   }
 });
 
-// Get referrals received by a specific user
+// Get referrals uploaded by a specific user
 app.get('/api/referrals', async (req, res) => {
   const userId = Number.parseInt(req.query.userId, 10);
 
@@ -996,7 +998,7 @@ app.get('/api/referrals', async (req, res) => {
         created_at AS createdAt,
         status
        FROM referrals
-       WHERE user_id = ?
+       WHERE sender_id = ?
        ORDER BY created_at DESC`,
       [userId]
     );
@@ -1015,6 +1017,88 @@ app.get('/api/referrals', async (req, res) => {
   } catch (error) {
     console.error('Referrals fetch error:', error);
     res.status(500).json({ success: false, message: 'Server error while fetching referrals' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Get referrals received by a specific user
+app.get('/api/referrals/received', async (req, res) => {
+  const userId = Number.parseInt(req.query.userId, 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid userId is required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    const [rows] = await connection.execute(
+      `SELECT
+        id,
+        referrer_name AS referrerName,
+        referrer_contact AS referrerContact,
+        referral_type AS referralType,
+        remarks,
+        created_at AS createdAt,
+        status
+       FROM referrals
+       WHERE recipient_id = ? AND sender_id != ?
+       ORDER BY created_at DESC`,
+      [userId, userId]
+    );
+
+    const payload = rows.map((row) => ({
+      id: String(row.id),
+      referrerName: row.referrerName,
+      referrerContact: row.referrerContact,
+      referralType: row.referralType,
+      remarks: row.remarks || '',
+      createdAt: row.createdAt,
+      status: row.status
+    }));
+
+    res.status(200).json(payload);
+  } catch (error) {
+    console.error('Received referrals fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching received referrals' });
+  } finally {
+    releaseConnection(connection);
+  }
+});
+
+// Delete referral uploaded by a specific user
+app.delete('/api/referrals/:id', async (req, res) => {
+  const userId = Number.parseInt(req.query.userId, 10);
+  const referralId = Number.parseInt(req.params.id, 10);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid userId is required' });
+  }
+
+  if (!Number.isInteger(referralId) || referralId <= 0) {
+    return res.status(400).json({ success: false, message: 'Valid referral id is required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [result] = await connection.execute(
+      'DELETE FROM referrals WHERE id = ? AND sender_id = ?',
+      [referralId, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Referral not found for this user' });
+    }
+
+    res.status(200).json({ success: true, message: 'Referral deleted successfully' });
+  } catch (error) {
+    console.error('Referral delete error:', error);
+    res.status(500).json({ success: false, message: 'Server error while deleting referral' });
   } finally {
     releaseConnection(connection);
   }

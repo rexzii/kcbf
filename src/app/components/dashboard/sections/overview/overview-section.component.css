@@ -113,6 +113,34 @@
   color: #a72638;
 }
 
+.uploaded-count-section {
+  border-color: #cfddfb;
+}
+
+.uploaded-count-body {
+  min-height: 164px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.uploaded-count-value {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  line-height: 1;
+  font-weight: 800;
+  color: #1649a2;
+}
+
+.uploaded-count-label {
+  margin: 0;
+  color: #5f739d;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
 @media (max-width: 1200px) {
   .content-grid {
     grid-template-columns: 1fr;

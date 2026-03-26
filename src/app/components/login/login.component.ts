@@ -17,6 +17,7 @@ export class LoginComponent implements OnInit {
   loading = false;
   submitted = false;
   error = '';
+  showPassword = false;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -28,8 +29,22 @@ export class LoginComponent implements OnInit {
   ngOnInit(): void {
     this.loginForm = this.formBuilder.group({
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
+      password: ['', [Validators.required, Validators.minLength(6), this.alphanumericValidator]]
     });
+  }
+
+  alphanumericValidator(control: any) {
+    const value = control.value;
+    if (!value) {
+      return null;
+    }
+    const alphanumericRegex = /^[a-zA-Z0-9]*$/;
+    return alphanumericRegex.test(value) ? null : { alphanumeric: true };
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+    this.cdr.markForCheck();
   }
 
   get f() {

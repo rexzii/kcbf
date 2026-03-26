@@ -71,6 +71,7 @@ export class DashboardComponent implements OnInit {
   recommendationRequests: Recommendation[] = [];
   meetingRequests: MeetingRequest[] = [];
   referrals: Referral[] = [];
+  receivedReferrals: Referral[] = [];
   doneBusinesses: DoneBusiness[] = [];
   registeredMembers: UserLookup[] = [];
   selectedMeetingMembers: UserLookup[] = [];
@@ -94,6 +95,7 @@ export class DashboardComponent implements OnInit {
     this.loadMeetingRequestsForCurrentUser();
     this.loadRecommendationsForCurrentUser();
     this.loadReferralsForCurrentUser();
+    this.loadReceivedReferralsForCurrentUser();
   }
 
   private loadRegisteredMembers(): void {
@@ -204,20 +206,49 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadReferralsForCurrentUser(): void {
-    const currentUserId = this.authService.currentUser$.value?.id;
+    this.authService.getCurrentUser().pipe(take(1)).subscribe({
+      next: (currentUser) => {
+        if (!currentUser?.id) {
+          return;
+        }
 
-    if (!currentUserId) {
-      return;
-    }
-
-    this.dashboardService.getReferrals(currentUserId).subscribe({
-      next: (items) => {
-        this.referrals = items;
-        this.cdr.markForCheck();
+        this.dashboardService.getReferrals(currentUser.id).subscribe({
+          next: (items) => {
+            this.referrals = items;
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            console.error('Error loading referrals:', err);
+            this.cdr.markForCheck();
+          }
+        });
       },
       error: (err) => {
-        console.error('Error loading referrals:', err);
-        this.cdr.markForCheck();
+        console.error('Error reading logged-in user:', err);
+      }
+    });
+  }
+
+  private loadReceivedReferralsForCurrentUser(): void {
+    this.authService.getCurrentUser().pipe(take(1)).subscribe({
+      next: (currentUser) => {
+        if (!currentUser?.id) {
+          return;
+        }
+
+        this.dashboardService.getReceivedReferrals(currentUser.id).subscribe({
+          next: (items) => {
+            this.receivedReferrals = items;
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            console.error('Error loading received referrals:', err);
+            this.cdr.markForCheck();
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error reading logged-in user:', err);
       }
     });
   }
@@ -282,6 +313,11 @@ export class DashboardComponent implements OnInit {
     this.activeTab.set(tab);
     this.sidebarOpen.set(false);
     this.clearMessages();
+
+    if (tab === 'overview' || tab === 'referral') {
+      this.loadReferralsForCurrentUser();
+      this.loadReceivedReferralsForCurrentUser();
+    }
   }
 
   toggleSidebar(): void {
@@ -428,6 +464,35 @@ export class DashboardComponent implements OnInit {
       error: (err) => {
         this.loading.set(false);
         this.errorMessage.set('Error submitting referral. Please try again.');
+        this.cdr.markForCheck();
+        console.error('Error:', err);
+      }
+    });
+  }
+
+  onDeleteReferral(referralId: string): void {
+    const currentUser = this.authService.currentUser$.value;
+
+    if (!currentUser?.id) {
+      this.errorMessage.set('Unable to identify logged in user. Please log in again.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.loading.set(true);
+    this.cdr.markForCheck();
+
+    this.dashboardService.deleteReferral(currentUser.id, referralId).subscribe({
+      next: (response) => {
+        this.referrals = this.referrals.filter((item) => item.id !== referralId);
+        this.loading.set(false);
+        this.successMessage.set(response.message || 'Referral deleted successfully!');
+        this.cdr.markForCheck();
+        setTimeout(() => this.clearMessages(), 3000);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.errorMessage.set(err?.error?.message || 'Error deleting referral. Please try again.');
         this.cdr.markForCheck();
         console.error('Error:', err);
       }

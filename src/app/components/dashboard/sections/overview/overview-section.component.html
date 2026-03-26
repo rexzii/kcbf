@@ -39,7 +39,7 @@
     </section>
 
     <section class="content-section">
-      <h3>Referrals</h3>
+      <h3>Recommendation</h3>
       <div class="section-body">
         <div *ngIf="referrals.length === 0" class="empty-state">
           No referrals received from members yet.
@@ -67,6 +67,14 @@
           <p class="timestamp">{{ business.createdAt | date:'short' }}</p>
           <span [class]="'status ' + getStatusClass(business.status)">{{ business.status }}</span>
         </div>
+      </div>
+    </section>
+
+    <section class="content-section uploaded-count-section">
+      <h3>Uploaded Referrals</h3>
+      <div class="section-body uploaded-count-body">
+        <p class="uploaded-count-value">{{ uploadedReferralCount }}</p>
+        <p class="uploaded-count-label">Total uploaded referrals</p>
       </div>
     </section>
   </div>

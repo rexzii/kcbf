@@ -94,6 +94,18 @@ export class DashboardService {
     return this.http.get<Referral[]>(`${this.apiUrl}/referrals?userId=${userId}`);
   }
 
+  // Get referrals received by current user
+  getReceivedReferrals(userId: number): Observable<Referral[]> {
+    return this.http.get<Referral[]>(`${this.apiUrl}/referrals/received?userId=${userId}`);
+  }
+
+  // Delete referral created for current user
+  deleteReferral(userId: number, referralId: string): Observable<{ success: boolean; message: string }> {
+    return this.http.delete<{ success: boolean; message: string }>(
+      `${this.apiUrl}/referrals/${referralId}?userId=${userId}`
+    );
+  }
+
   // Submit done business
   submitDoneBusiness(business: Omit<DoneBusiness, 'id' | 'createdAt' | 'status'>): Observable<DoneBusiness> {
     return this.http.post<DoneBusiness>(`${this.apiUrl}/done-business`, business);

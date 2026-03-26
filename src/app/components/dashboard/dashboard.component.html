@@ -52,7 +52,8 @@
         [memberProfile]="memberProfile"
         [recommendationRequests]="recommendationRequests"
         [meetingRequests]="meetingRequests"
-        [referrals]="referrals"
+        [referrals]="receivedReferrals"
+        [uploadedReferralCount]="referrals.length"
         [doneBusinesses]="doneBusinesses"
         (recommendationSelected)="onRecommendationCardClick($event)">
       </app-overview-section>
@@ -71,8 +72,10 @@
         *ngIf="activeTab() === 'referral'"
         [referralForm]="referralForm"
         [memberOptions]="registeredMembers"
+        [referrals]="referrals"
         [loading]="loading()"
         (submitForm)="onReferralSubmit()"
+        (deleteReferral)="onDeleteReferral($event)"
         (cancel)="setActiveTab('overview')">
       </app-referral-section>
 
